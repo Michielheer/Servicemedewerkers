@@ -4,4 +4,4 @@ python-dotenv
 supabase
 openai
 fpdf
-datetime 
+datetime
