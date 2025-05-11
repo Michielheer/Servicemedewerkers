@@ -399,7 +399,6 @@ with form_tab:
             andere_zaken = st.text_area("Zie je andere schoonmaakmiddelen staan? (Bezems, wissers van andere leveranciers, etc.)")
             data["andere_zaken"] = andere_zaken
 
-            # Vraag altijd, ook als er geen wissers meer zijn
             st.markdown("### 2.2 Zijn er wissers gestopt?")
             gestopte_wissers = st.checkbox("Zijn er wissers gestopt sinds het laatste servicemoment?")
             data["gestopte_wissers"] = gestopte_wissers
@@ -409,20 +408,13 @@ with form_tab:
                 if data["actie_ophaleen"] == "Nee":
                     data["actie_binnendienst"] = st.text_area("Actie: Vraag aan binnendienst of SM of de wisser toch echt niet gebruikt wordt. Anders ophaalopdracht aanmaken.")
 
-            st.markdown("### 2.3 Aantal wissers tellen")
-            st.info("Tel alle aanwezige wissers en vul per type en formaat het aantal in. Vergelijk dit met het abonnement.")
-            wissers_types = [
-                ("Industrial (Paars)", ["100 cm", "75 cm", "50 cm", "Handwisser"]),
-                ("Light Use (Grijs)", ["100 cm", "75 cm", "50 cm", "Handwisser"]),
-                ("Rood (Wederverkoper)", ["100 cm", "75 cm", "50 cm", "Handwisser"])
-            ]
-            data["wissers_telling"] = {}
-            for wisser_type, formaten in wissers_types:
-                st.markdown(f"**{wisser_type}**")
-                for formaat in formaten:
-                    aantal = st.number_input(f"Aantal {wisser_type} - {formaat}", min_value=0, value=0, step=1, key=f"{wisser_type}_{formaat}")
-                    gebruikt = st.number_input(f"Waarvan gebruikt ({wisser_type} - {formaat})", min_value=0, value=0, step=1, key=f"{wisser_type}_{formaat}_gebruikt")
-                    data["wissers_telling"][f"{wisser_type}_{formaat}"] = {"aantal": aantal, "gebruikt": gebruikt}
+            st.markdown("### 2.3 Aantal wissers tellen (compact)")
+            st.info("Vul per type het totaal aantal aanwezige wissers in (ongeacht formaat).")
+            wissers_types = ["Industrial (Paars)", "Light Use (Grijs)", "Rood (Wederverkoper)"]
+            data["wissers_telling_compact"] = {}
+            for wisser_type in wissers_types:
+                aantal = st.number_input(f"Aantal {wisser_type} (totaal)", min_value=0, value=0, step=1, key=f"{wisser_type}_totaal")
+                data["wissers_telling_compact"][wisser_type] = aantal
             data["wissers_telling_opmerking"] = st.text_area("Opmerking bij telling wissers (optioneel)")
 
             st.markdown("### 2.4 Stelen en toebehoren")
