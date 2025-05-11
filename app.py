@@ -346,23 +346,6 @@ for abo in matten_abos:
         # Anders gebruik standaardwaarde
         abo["ligplaatsen"] = [{"afdeling": "Algemeen", "ligplaats": "Algemeen", "aantal": aantal}]
 
-# --- Toon overzicht van abonnementen ---
-st.markdown("---")
-st.subheader("Actieve abonnementen voor deze klant")
-if matten_abos:
-    st.markdown("#### Matten abonnementen")
-    for ab in matten_abos:
-        loc_info = ""
-        if "ligplaatsen" in ab and ab["ligplaatsen"]:
-            loc = ab["ligplaatsen"][0]
-            if loc["afdeling"] != "Algemeen" or loc["ligplaats"] != "Algemeen":
-                loc_info = f" | Afdeling: {loc['afdeling']}, Ligplaats: {loc['ligplaats']}"
-        st.markdown(f"- {ab['productomschrijving']} (Productnummer: {ab['productnummer']}) | Aantal: {ab.get('aantal', '-')}, Frequentie: {ab.get('bezoekritme', '-')}{loc_info}")
-if wissers_abos:
-    st.markdown("#### Wissers abonnementen")
-    for ab in wissers_abos:
-        st.markdown(f"- {ab['productomschrijving']} (Productnummer: {ab['productnummer']}) | Aantal: {ab.get('aantal', '-')}, Frequentie: {ab.get('bezoekritme', '-')}")
-
 # --- Voeg tabs toe voor formulier en rapportage ---
 form_tab, report_tab = st.tabs(["📝 Inspectieformulier", "📊 Rapportage"])
 
