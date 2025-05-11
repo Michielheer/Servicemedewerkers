@@ -690,74 +690,136 @@ with form_tab:
     # ... praktijkvragen code ...
 
     # --- Tabel met standaardmatten en logomatten (zoals voorheen) ---
-    st.markdown("---")
-    st.subheader("Overzicht en bewerking matten uit abonnement")
-    abonnement_afdelingen = set()
-    abonnement_ligplaatsen = set()
-    for abo in abon_data:
-        if 'afdeling' in abo and abo['afdeling']:
-            abonnement_afdelingen.add(abo['afdeling'])
-        if 'ligplaats' in abo and abo['ligplaats']:
-            abonnement_ligplaatsen.add(abo['ligplaats'])
-        for loc in abo.get('ligplaatsen', []):
-            if 'afdeling' in loc and loc['afdeling']:
-                abonnement_afdelingen.add(loc['afdeling'])
-            if 'ligplaats' in loc and loc['ligplaats']:
-                abonnement_ligplaatsen.add(loc['ligplaats'])
-    for mat in st.session_state.standaard_matten_lijst + st.session_state.logomatten_lijst:
-        abonnement_afdelingen.add(mat.get('afdeling', ''))
-        abonnement_ligplaatsen.add(mat.get('ligplaats', ''))
-    for loc in get_voorbeeld_locaties():
-        abonnement_afdelingen.add(loc["afdeling"])
-        abonnement_ligplaatsen.add(loc["ligplaats"])
-    afdelingen = sorted([a for a in abonnement_afdelingen if a])
-    ligplaatsen = sorted([l for l in abonnement_ligplaatsen if l])
+    if soort == "Matten":
+        # Initialisatie van mattenlijsten (zoals in originele code)
+        if 'matten_geïnitialiseerd' not in st.session_state:
+            st.session_state.standaard_matten_lijst = []
+            st.session_state.logomatten_lijst = []
+            # ... (rest van de initialisatie zoals origineel) ...
+            st.session_state.matten_geïnitialiseerd = True
 
-    standaard_tab, logo_tab = st.tabs(["Standaard matten", "Logomatten"])
-    with standaard_tab:
-        st.markdown("#### Standaard matten")
-        mat_data = []
-        for i, mat in enumerate(st.session_state.standaard_matten_lijst):
-            mat_data.append({
-                "Productomschrijving": mat["mat_type"],
-                "Afdeling": mat["afdeling"],
-                "Ligplaats": mat["ligplaats"],
-                "Aanwezig": mat["aanwezig"],
-                "Schoon/onbeschadigd": mat["schoon_onbeschadigd"],
-                "Vuilgraad": mat.get("vuilgraad_label", "Licht vervuild")
-            })
-        if mat_data:
-            df = pd.DataFrame(mat_data)
-            column_order = ["Afdeling", "Ligplaats", "Productomschrijving", "Vuilgraad", "Aanwezig", "Schoon/onbeschadigd"]
-            columns_to_use = [col for col in column_order if col in df.columns]
-            other_columns = [col for col in df.columns if col not in column_order]
-            final_column_order = columns_to_use + other_columns
-            df = df[final_column_order]
-            edited_df = st.data_editor(
-                df,
-                column_config={
-                    "Productomschrijving": st.column_config.TextColumn("Productomschrijving", disabled=True),
-                    "Afdeling": st.column_config.SelectboxColumn("Afdeling", options=afdelingen, required=True),
-                    "Ligplaats": st.column_config.SelectboxColumn("Ligplaats", options=ligplaatsen, required=True),
-                    "Aanwezig": st.column_config.CheckboxColumn("Aanwezig"),
-                    "Schoon/onbeschadigd": st.column_config.CheckboxColumn("Schoon/onbeschadigd"),
-                    "Vuilgraad": st.column_config.SelectboxColumn("Vuilgraad", options=["Schoon", "Licht vervuild", "Sterk vervuild"], required=True)
-                },
-                hide_index=True,
-                num_rows="dynamic",
-                key="standaard_matten_editor"
-            )
-            if edited_df is not None:
-                for i, row in edited_df.iterrows():
-                    mat = st.session_state.standaard_matten_lijst[i]
-                    mat["afdeling"] = row["Afdeling"]
-                    mat["ligplaats"] = row["Ligplaats"]
-                    mat["aanwezig"] = bool(row["Aanwezig"])
-                    mat["schoon_onbeschadigd"] = bool(row["Schoon/onbeschadigd"])
-                    mat["vuilgraad_label"] = row["Vuilgraad"]
-                    if row["Vuilgraad"] == "Schoon":
-                        mat["vuilgraad"] = 0
-                    elif row["Vuilgraad"] == "Licht vervuild":
-                        mat["vuilgraad"] = 1
-                    else:
-                        mat["vuilgraad"] = 2
+        # --- Tabel met tabs voor standaardmatten en logomatten ---
+        if hasattr(st.session_state, 'standaard_matten_lijst') and hasattr(st.session_state, 'logomatten_lijst'):
+            st.markdown("---")
+            st.subheader("Overzicht en bewerking matten uit abonnement")
+            abonnement_afdelingen = set()
+            abonnement_ligplaatsen = set()
+            for abo in abos:
+                if 'afdeling' in abo and abo['afdeling']:
+                    abonnement_afdelingen.add(abo['afdeling'])
+                if 'ligplaats' in abo and abo['ligplaats']:
+                    abonnement_ligplaatsen.add(abo['ligplaats'])
+                for loc in abo.get('ligplaatsen', []):
+                    if 'afdeling' in loc and loc['afdeling']:
+                        abonnement_afdelingen.add(loc['afdeling'])
+                    if 'ligplaats' in loc and loc['ligplaats']:
+                        abonnement_ligplaatsen.add(loc['ligplaats'])
+            for mat in st.session_state.standaard_matten_lijst + st.session_state.logomatten_lijst:
+                abonnement_afdelingen.add(mat.get('afdeling', ''))
+                abonnement_ligplaatsen.add(mat.get('ligplaats', ''))
+            for loc in get_voorbeeld_locaties():
+                abonnement_afdelingen.add(loc["afdeling"])
+                abonnement_ligplaatsen.add(loc["ligplaats"])
+            afdelingen = sorted([a for a in abonnement_afdelingen if a])
+            ligplaatsen = sorted([l for l in abonnement_ligplaatsen if l])
+
+            standaard_tab, logo_tab = st.tabs(["Standaard matten", "Logomatten"])
+            with standaard_tab:
+                st.markdown("#### Standaard matten")
+                mat_data = []
+                for i, mat in enumerate(st.session_state.standaard_matten_lijst):
+                    mat_data.append({
+                        "Productomschrijving": mat["mat_type"],
+                        "Afdeling": mat["afdeling"],
+                        "Ligplaats": mat["ligplaats"],
+                        "Aanwezig": mat["aanwezig"],
+                        "Schoon/onbeschadigd": mat["schoon_onbeschadigd"],
+                        "Vuilgraad": mat.get("vuilgraad_label", "Licht vervuild")
+                    })
+                if mat_data:
+                    df = pd.DataFrame(mat_data)
+                    column_order = ["Afdeling", "Ligplaats", "Productomschrijving", "Vuilgraad", "Aanwezig", "Schoon/onbeschadigd"]
+                    columns_to_use = [col for col in column_order if col in df.columns]
+                    other_columns = [col for col in df.columns if col not in column_order]
+                    final_column_order = columns_to_use + other_columns
+                    df = df[final_column_order]
+                    edited_df = st.data_editor(
+                        df,
+                        column_config={
+                            "Productomschrijving": st.column_config.TextColumn("Productomschrijving", disabled=True),
+                            "Afdeling": st.column_config.SelectboxColumn("Afdeling", options=afdelingen, required=True),
+                            "Ligplaats": st.column_config.SelectboxColumn("Ligplaats", options=ligplaatsen, required=True),
+                            "Aanwezig": st.column_config.CheckboxColumn("Aanwezig"),
+                            "Schoon/onbeschadigd": st.column_config.CheckboxColumn("Schoon/onbeschadigd"),
+                            "Vuilgraad": st.column_config.SelectboxColumn("Vuilgraad", options=["Schoon", "Licht vervuild", "Sterk vervuild"], required=True)
+                        },
+                        hide_index=True,
+                        num_rows="dynamic",
+                        key="standaard_matten_editor"
+                    )
+                    if edited_df is not None:
+                        for i, row in edited_df.iterrows():
+                            mat = st.session_state.standaard_matten_lijst[i]
+                            mat["afdeling"] = row["Afdeling"]
+                            mat["ligplaats"] = row["Ligplaats"]
+                            mat["aanwezig"] = bool(row["Aanwezig"])
+                            mat["schoon_onbeschadigd"] = bool(row["Schoon/onbeschadigd"])
+                            mat["vuilgraad_label"] = row["Vuilgraad"]
+                            if row["Vuilgraad"] == "Schoon":
+                                mat["vuilgraad"] = 0
+                            elif row["Vuilgraad"] == "Licht vervuild":
+                                mat["vuilgraad"] = 1
+                            else:
+                                mat["vuilgraad"] = 2
+            with logo_tab:
+                st.markdown("#### Logomatten")
+                mat_data = []
+                for i, mat in enumerate(st.session_state.logomatten_lijst):
+                    mat_data.append({
+                        "Productomschrijving": mat["mat_type"],
+                        "Afdeling": mat["afdeling"],
+                        "Ligplaats": mat["ligplaats"],
+                        "Barcode": mat.get("barcode", ""),
+                        "Leeftijd": extract_mat_leeftijd(mat.get("barcode", "")) if mat.get("barcode") else "-",
+                        "Aanwezig": mat["aanwezig"],
+                        "Schoon/onbeschadigd": mat["schoon_onbeschadigd"],
+                        "Vuilgraad": mat.get("vuilgraad_label", "Licht vervuild")
+                    })
+                if mat_data:
+                    df = pd.DataFrame(mat_data)
+                    column_order = ["Afdeling", "Ligplaats", "Productomschrijving", "Vuilgraad", "Barcode", "Leeftijd", "Aanwezig", "Schoon/onbeschadigd"]
+                    columns_to_use = [col for col in column_order if col in df.columns]
+                    other_columns = [col for col in df.columns if col not in column_order]
+                    final_column_order = columns_to_use + other_columns
+                    df = df[final_column_order]
+                    edited_df = st.data_editor(
+                        df,
+                        column_config={
+                            "Productomschrijving": st.column_config.TextColumn("Productomschrijving", disabled=True),
+                            "Afdeling": st.column_config.SelectboxColumn("Afdeling", options=afdelingen, required=True),
+                            "Ligplaats": st.column_config.SelectboxColumn("Ligplaats", options=ligplaatsen, required=True),
+                            "Barcode": st.column_config.TextColumn("Barcode"),
+                            "Leeftijd": st.column_config.TextColumn("Leeftijd", disabled=True),
+                            "Aanwezig": st.column_config.CheckboxColumn("Aanwezig"),
+                            "Schoon/onbeschadigd": st.column_config.CheckboxColumn("Schoon/onbeschadigd"),
+                            "Vuilgraad": st.column_config.SelectboxColumn("Vuilgraad", options=["Schoon", "Licht vervuild", "Sterk vervuild"], required=True)
+                        },
+                        hide_index=True,
+                        num_rows="dynamic",
+                        key="logomatten_editor"
+                    )
+                    if edited_df is not None:
+                        for i, row in edited_df.iterrows():
+                            mat = st.session_state.logomatten_lijst[i]
+                            mat["afdeling"] = row["Afdeling"]
+                            mat["ligplaats"] = row["Ligplaats"]
+                            mat["barcode"] = row["Barcode"]
+                            mat["aanwezig"] = bool(row["Aanwezig"])
+                            mat["schoon_onbeschadigd"] = bool(row["Schoon/onbeschadigd"])
+                            mat["vuilgraad_label"] = row["Vuilgraad"]
+                            if row["Vuilgraad"] == "Schoon":
+                                mat["vuilgraad"] = 0
+                            elif row["Vuilgraad"] == "Licht vervuild":
+                                mat["vuilgraad"] = 1
+                            else:
+                                mat["vuilgraad"] = 2
