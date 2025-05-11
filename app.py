@@ -307,6 +307,16 @@ for contactpersoon in contactpersonen_data:
 # Maak een string met alle contactpersonen
 contactpersoon_str = ", ".join(contactpersonen_lijst) if contactpersonen_lijst else "-"
 
+# --- Contactpersoon selectie als eerste vraag ---
+st.markdown("---")
+st.subheader("Contactpersoon")
+st.markdown("Wie heb je gesproken en gaat de samenvatting ontvangen?")
+contactpersoon_keuze = st.selectbox(
+    "Selecteer contactpersoon",
+    contactpersonen_lijst,
+    key="contactpersoon_select"
+)
+
 # --- Abonnementen ophalen ---
 abon_data = supabase.table("abonnementen").select("*").eq("relatienummer", relatienummer).execute().data
 matten_abos = [a for a in abon_data if a.get("activiteit", "").lower() == "matten"]
