@@ -458,8 +458,6 @@ with form_tab:
                         add_todo_action("Controleer gestopte wissers en voer ophaalopdracht uit.")
                     if data.get('ligplaats_ok', '') == "Nee":
                         add_todo_action("Ligplaats van wissers controleren en aanpassen in TMS.")
-                    if data.get('optimalisatie_wissers', '') == "Ja, optimaliseren mogelijk":
-                        add_todo_action("Optimalisatie wisselfrequentie bespreken met klant en verwerken.")
                     accessoires_vervangen = data.get('accessoires_vervangen', {})
                     if accessoires_vervangen and any(v > 0 for v in accessoires_vervangen.values()):
                         add_todo_action("Vervang accessoires bij wissers volgens ingevulde aantallen.")
@@ -783,9 +781,6 @@ with form_tab:
                 
                 if wissers_data.get('ligplaats_opmerking'):
                     klant_rapport += f"\nOpmerking ligplaats:\n{wissers_data['ligplaats_opmerking']}\n"
-                
-                if wissers_data.get('optimalisatie_wissers') == "Ja, optimaliseren mogelijk":
-                    klant_rapport += f"\nOptimalisatie wisselfrequentie:\n{wissers_data.get('optimalisatie_toelichting', '')}\n"
 
             # AI-rapportage
             if os.getenv("OPENAI_API_KEY"):
@@ -854,3 +849,27 @@ with form_tab:
 
     # --- Praktijkvragen matten ... (blijven bovenaan) ---
     # ... praktijkvragen code ...
+
+    # --- Intelligente optimalisatiecheck voor wissers ---
+    wissers_optimalisatie_todo = False
+    wissers_abos_db = [a for a in abon_data if a.get("activiteit", "") == "Wissers"]
+
+    for wisser_abo in wissers_abos_db:
+        aantal = int(wisser_abo.get("aantal", 0) or 0)
+        bezoekritme = str(wisser_abo.get("bezoekritme", "")).lower()
+        if aantal <= 2 and (bezoekritme == "1-wekelijks" or bezoekritme == "wekelijks"):
+            # Kijk naar andere productgroepen
+            andere_abos = [a for a in abon_data if a.get("activiteit", "") != "Wissers"]
+            andere_ritmes = [str(a.get("bezoekritme", "")).lower() for a in andere_abos if a.get("bezoekritme")]
+            if andere_ritmes and all(r not in ["1-wekelijks", "wekelijks"] for r in andere_ritmes):
+                # Alleen als de andere productgroepen minder vaak zijn
+                wissers_optimalisatie_todo = True
+                break
+
+    if wissers_optimalisatie_todo:
+        add_todo_action(
+            "Optimaliseren wisselfrequentie: Bespreek met de klant of de wisselfrequentie van de wisser(s) kan worden aangepast. "
+            "Als we toch wekelijks voor matten of een ander product komen, is het niet erg om een wisser mee te nemen. "
+            "Maar als we speciaal voor de wisser komen (aantal <= 2, bezoekritme 1-wekelijks), optimaliseren: wisselfrequentie verdubbelen, aantal ook. "
+            "To-do SM: Bespreken met de klant dat we dit gaan doen. Kosten blijven gelijk, maar we komen niet onnodig vaak. Actie KS: abonnement omzetten voor gelijke jaarlijkse kosten."
+        )
