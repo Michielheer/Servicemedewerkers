@@ -311,11 +311,30 @@ contactpersoon_str = ", ".join(contactpersonen_lijst) if contactpersonen_lijst e
 st.markdown("---")
 st.subheader("Contactpersoon")
 st.markdown("Wie heb je gesproken en gaat de samenvatting ontvangen?")
-contactpersoon_keuze = st.selectbox(
+
+# Optie om bestaande contactpersoon te kiezen of nieuwe toe te voegen
+contact_opties = contactpersonen_lijst + ["Nieuwe contactpersoon toevoegen..."]
+contactpersoon_index = st.selectbox(
     "Selecteer contactpersoon",
-    contactpersonen_lijst,
+    contact_opties,
     key="contactpersoon_select"
 )
+
+nieuwe_contactpersoon = False
+if contactpersoon_index == "Nieuwe contactpersoon toevoegen...":
+    nieuwe_contactpersoon = True
+    contact_naam = st.text_input("Naam nieuwe contactpersoon")
+    contact_email = st.text_input("E-mailadres nieuwe contactpersoon")
+else:
+    # Haal naam en e-mail uit de string
+    geselecteerd = contactpersoon_index
+    if "(" in geselecteerd and geselecteerd.endswith(")"):
+        naam, email = geselecteerd.rsplit("(", 1)
+        contact_naam = st.text_input("Naam contactpersoon", naam.strip())
+        contact_email = st.text_input("E-mailadres contactpersoon", email[:-1].strip())
+    else:
+        contact_naam = st.text_input("Naam contactpersoon", geselecteerd.strip())
+        contact_email = st.text_input("E-mailadres contactpersoon", "")
 
 # --- Abonnementen ophalen ---
 abon_data = supabase.table("abonnementen").select("*").eq("relatienummer", relatienummer).execute().data
@@ -363,7 +382,7 @@ with form_tab:
     # --- Eén inspecteur en datum bovenaan ---
     st.markdown("---")
     st.subheader("Inspectiegegevens")
-    inspecteur_naam = st.text_input("Naam inspecteur / chauffeur")
+    inspecteur_naam = st.text_input("Naam inspecteur / chauffeur", value="Roberto")
     inspectie_datum = st.date_input("Datum bezoek", date.today())
 
     # --- Functie om alleen echte wissers te tellen ---
@@ -374,75 +393,123 @@ with form_tab:
     # --- Hulpfunctie voor inspectieformulier ---
     def inspectieformulier(soort, abos, fotos_key):
         st.markdown(f"## Inspectieformulier {soort}")
-        # --- Bepaal verwacht aantal echte wissers ---
+        data = {}
         if soort == "Wissers":
-            echte_wissers = [ab for ab in abos if is_echte_wisser(ab)]
-            verwacht_aantal = sum(int(ab.get('aantal', 0)) for ab in echte_wissers)
-            st.info(f"Volgens het abonnement zouden er {verwacht_aantal} echte wissers moeten zijn. Alleen echte wissers worden geteld, geen stelen, opvangbakken, muursteunen, roosters, etc.")
-            # Debug-overzicht van meegetelde wissers
-            if echte_wissers:
-                st.markdown("**Meegetelde echte wissers:**")
-                for ab in echte_wissers:
-                    st.markdown(f"- {ab.get('productomschrijving', '')} (Productnummer: {ab.get('productnummer', '')}) | Aantal: {ab.get('aantal', '')}, Frequentie: {ab.get('bezoekritme', '')}")
+            st.markdown("### 2.1 Zien we andere zaken staan?")
+            andere_zaken = st.text_area("Zie je andere schoonmaakmiddelen staan? (Bezems, wissers van andere leveranciers, etc.)")
+            data["andere_zaken"] = andere_zaken
+
+            # Vraag altijd, ook als er geen wissers meer zijn
+            st.markdown("### 2.2 Zijn er wissers gestopt?")
+            gestopte_wissers = st.checkbox("Zijn er wissers gestopt sinds het laatste servicemoment?")
+            data["gestopte_wissers"] = gestopte_wissers
+            if gestopte_wissers:
+                data["gestopte_wissers_info"] = st.text_area("Welke wissers zijn gestopt? (Vul artikel, stopdatum, ligplaats, is die weg, afbeelding, etc. in)")
+                data["actie_ophaleen"] = st.radio("Is de wisser daadwerkelijk weg?", ["Ja", "Nee", "Weet niet"]) 
+                if data["actie_ophaleen"] == "Nee":
+                    data["actie_binnendienst"] = st.text_area("Actie: Vraag aan binnendienst of SM of de wisser toch echt niet gebruikt wordt. Anders ophaalopdracht aanmaken.")
+
+            st.markdown("### 2.3 Aantal wissers tellen")
+            st.info("Tel alle aanwezige wissers en vul per type en formaat het aantal in. Vergelijk dit met het abonnement.")
+            wissers_types = [
+                ("Industrial (Paars)", ["100 cm", "75 cm", "50 cm", "Handwisser"]),
+                ("Light Use (Grijs)", ["100 cm", "75 cm", "50 cm", "Handwisser"]),
+                ("Rood (Wederverkoper)", ["100 cm", "75 cm", "50 cm", "Handwisser"])
+            ]
+            data["wissers_telling"] = {}
+            for wisser_type, formaten in wissers_types:
+                st.markdown(f"**{wisser_type}**")
+                for formaat in formaten:
+                    aantal = st.number_input(f"Aantal {wisser_type} - {formaat}", min_value=0, value=0, step=1, key=f"{wisser_type}_{formaat}")
+                    gebruikt = st.number_input(f"Waarvan gebruikt ({wisser_type} - {formaat})", min_value=0, value=0, step=1, key=f"{wisser_type}_{formaat}_gebruikt")
+                    data["wissers_telling"][f"{wisser_type}_{formaat}"] = {"aantal": aantal, "gebruikt": gebruikt}
+            data["wissers_telling_opmerking"] = st.text_area("Opmerking bij telling wissers (optioneel)")
+
+            st.markdown("### 2.4 Stelen en toebehoren")
+            st.info("Geef aan of alles nog in juiste staat is. Wat moet er vervangen worden?")
+            accessoires = ["Standaard steel", "Dubbele wissersteel", "Telescoopsteel", "Bak", "Muursteun"]
+            data["accessoires_vervangen"] = {}
+            for acc in accessoires:
+                vervangen = st.number_input(f"Aantal te vervangen: {acc}", min_value=0, value=0, step=1, key=f"vervang_{acc}")
+                data["accessoires_vervangen"][acc] = vervangen
+            data["accessoires_opmerking"] = st.text_area("Opmerking bij accessoires (optioneel)")
+
+            st.markdown("### 2.5 Verbruik vuile wissers")
+            aantal_vuil = st.number_input("Aantal vuile wissers bij wisselmoment", min_value=0, value=0, step=1, key="aantal_vuile_wissers")
+            data["aantal_vuile_wissers"] = aantal_vuil
+            data["verbruik_opmerking"] = st.text_area("Opmerking over verbruik (optioneel, alleen intern)")
+
+            st.markdown("### 2.6 Ligplaats & afdeling")
+            ligplaats_ok = st.radio("Is het duidelijk hoe de wisselplek is aangegeven?", ["Ja", "Nee"], key="ligplaats_ok")
+            data["ligplaats_ok"] = ligplaats_ok
+            data["ligplaats_opmerking"] = st.text_area("Opmerking bij ligplaats/afdeling (optioneel)")
+
+            st.markdown("### 2.7 Optimaliseren wisselfrequentie")
+            optimalisatie = st.radio("Is optimalisatie van de wisselfrequentie mogelijk?", ["Nee", "Ja, optimaliseren mogelijk"], key="optimalisatie_wissers")
+            data["optimalisatie_wissers"] = optimalisatie
+            if optimalisatie == "Ja, optimaliseren mogelijk":
+                data["optimalisatie_toelichting"] = st.text_area("Toelichting optimalisatie (bespreek met klant, kosten blijven gelijk, etc.)")
+
+            data["fotos"] = st.file_uploader("Upload foto's van wissers en accessoires", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key=fotos_key)
+            if data["fotos"]:
+                st.success(f"{len(data['fotos'])} foto's geüpload")
+            return data
+        else:
+            skip = st.radio(f"{soort} inspectie uitvoeren?", ["Ja", "Nee"], index=0, key=f"{soort}_skip") == "Nee"
+            data = {"skip": skip}
+            if skip:
+                data["skip_reden"] = st.text_area(f"Reden voor overslaan van {soort.lower()} inspectie", key=f"{soort}_skip_reden")
             else:
-                st.warning("Er zijn geen echte wissers gevonden volgens de huidige selectie.")
-        else:
-            verwacht_aantal = sum(int(ab.get('aantal', 0)) for ab in abos)
-        skip = st.radio(f"{soort} inspectie uitvoeren?", ["Ja", "Nee"], index=0, key=f"{soort}_skip") == "Nee"
-        data = {"skip": skip}
-        if skip:
-            data["skip_reden"] = st.text_area(f"Reden voor overslaan van {soort.lower()} inspectie", key=f"{soort}_skip_reden")
-        else:
-            data["frequentie_correct"] = st.radio("Klopt de frequentie?", ["Ja", "Nee"], index=0, key=f"{soort}_frequentie_correct") == "Ja"
-            data["juiste_plek"] = st.radio(f"Liggen {soort.lower()} op de juiste plek?", ["Ja", "Nee"], index=0, key=f"{soort}_juiste_plek") == "Ja"
-            if soort == "Wissers":
-                data["aanwezig"] = st.radio("Zijn de wissers aanwezig?", ["Ja", "Nee"], index=0, key="wissers_aanwezig") == "Ja"
-            # --- Matten-specifiek: standaard en logomatten ---
-            if soort == "Matten":
-                # Initialiseer matten vanuit abonnementen bij eerste keer
-                if 'matten_geïnitialiseerd' not in st.session_state:
-                    st.session_state.standaard_matten_lijst = []
-                    st.session_state.logomatten_lijst = []
-                    
-                    # Laat eerst alle informatie over de abonnementen zien
-                    st.markdown("### Informatie uit abonnement")
-                    for abo in abos:
-                        mat_type = abo.get('productomschrijving', 'Onbekend')
-                        aantal = int(abo.get('aantal', 1))
-                        bezoekritme = abo.get('bezoekritme', '1-wekelijks')
-                        afdeling = abo.get('afdeling', 'Algemeen')
-                        ligplaats = abo.get('ligplaats', 'Algemeen')
+                data["frequentie_correct"] = st.radio("Klopt de frequentie?", ["Ja", "Nee"], index=0, key=f"{soort}_frequentie_correct") == "Ja"
+                data["juiste_plek"] = st.radio(f"Liggen {soort.lower()} op de juiste plek?", ["Ja", "Nee"], index=0, key=f"{soort}_juiste_plek") == "Ja"
+                if soort == "Wissers":
+                    data["aanwezig"] = st.radio("Zijn de wissers aanwezig?", ["Ja", "Nee"], index=0, key="wissers_aanwezig") == "Ja"
+                # --- Matten-specifiek: standaard en logomatten ---
+                if soort == "Matten":
+                    # Initialiseer matten vanuit abonnementen bij eerste keer
+                    if 'matten_geïnitialiseerd' not in st.session_state:
+                        st.session_state.standaard_matten_lijst = []
+                        st.session_state.logomatten_lijst = []
                         
-                        st.info(f"**{mat_type}** | Aantal: {aantal}, Frequentie: {bezoekritme} | Afdeling: {afdeling}, Ligplaats: {ligplaats}")
-                        
-                        # Maak voor elke mat in het abonnement een invoer
-                        ligplaatsen = abo.get("ligplaatsen", [{"afdeling": afdeling, "ligplaats": ligplaats, "aantal": aantal}])
-                        
-                        for loc in ligplaatsen:
-                            aantal_op_locatie = loc.get("aantal", 1)
-                            loc_afdeling = loc.get("afdeling", afdeling)
-                            loc_ligplaats = loc.get("ligplaats", ligplaats)
+                        # Laat eerst alle informatie over de abonnementen zien
+                        st.markdown("### Informatie uit abonnement")
+                        for abo in abos:
+                            mat_type = abo.get('productomschrijving', 'Onbekend')
+                            aantal = int(abo.get('aantal', 1))
+                            bezoekritme = abo.get('bezoekritme', '1-wekelijks')
+                            afdeling = abo.get('afdeling', 'Algemeen')
+                            ligplaats = abo.get('ligplaats', 'Algemeen')
                             
-                            # Maak voor elke mat op deze locatie een invoer
-                            for i in range(aantal_op_locatie):
-                                mat_entry = {
-                                    "afdeling": loc_afdeling,
-                                    "ligplaats": loc_ligplaats,
-                                    "mat_type": mat_type,
-                                    "aantal": 1,  # 1 per invoer
-                                    "bezoekritme": bezoekritme,
-                                    "schoon_onbeschadigd": True,
-                                    "vuilgraad_label": "Licht vervuild",
-                                    "aanwezig": True,
-                                    "abo_ref": abo  # Referentie naar het abonnement
-                                }
+                            st.info(f"**{mat_type}** | Aantal: {aantal}, Frequentie: {bezoekritme} | Afdeling: {afdeling}, Ligplaats: {ligplaats}")
+                            
+                            # Maak voor elke mat in het abonnement een invoer
+                            ligplaatsen = abo.get("ligplaatsen", [{"afdeling": afdeling, "ligplaats": ligplaats, "aantal": aantal}])
+                            
+                            for loc in ligplaatsen:
+                                aantal_op_locatie = loc.get("aantal", 1)
+                                loc_afdeling = loc.get("afdeling", afdeling)
+                                loc_ligplaats = loc.get("ligplaats", ligplaats)
                                 
-                                # Bepaal of het een standaard mat of logomat is
-                                if "effektmat" in mat_type.lower():
-                                    st.session_state.standaard_matten_lijst.append(mat_entry)
-                                else:
-                                    mat_entry["barcode"] = ""  # Voeg barcodeveld toe voor logomatten
-                                    st.session_state.logomatten_lijst.append(mat_entry)
+                                # Maak voor elke mat op deze locatie een invoer
+                                for i in range(aantal_op_locatie):
+                                    mat_entry = {
+                                        "afdeling": loc_afdeling,
+                                        "ligplaats": loc_ligplaats,
+                                        "mat_type": mat_type,
+                                        "aantal": 1,  # 1 per invoer
+                                        "bezoekritme": bezoekritme,
+                                        "schoon_onbeschadigd": True,
+                                        "vuilgraad_label": "Licht vervuild",
+                                        "aanwezig": True,
+                                        "abo_ref": abo  # Referentie naar het abonnement
+                                    }
+                                    
+                                    # Bepaal of het een standaard mat of logomat is
+                                    if "effektmat" in mat_type.lower():
+                                        st.session_state.standaard_matten_lijst.append(mat_entry)
+                                    else:
+                                        mat_entry["barcode"] = ""  # Voeg barcodeveld toe voor logomatten
+                                        st.session_state.logomatten_lijst.append(mat_entry)
                     
                     st.session_state.matten_geïnitialiseerd = True
                 
@@ -692,21 +759,7 @@ with form_tab:
                         # Sla de mattenlijsten op in data zodat ze in het rapport gebruikt kunnen worden
                         data["standaard_matten"] = st.session_state.standaard_matten_lijst.copy()
                         data["logomatten"] = st.session_state.logomatten_lijst.copy()
-            else:
-                aantal = st.slider(f"Aantal aanwezige {soort.lower()}", min_value=0, max_value=verwacht_aantal+5, value=verwacht_aantal, key=f"{soort}_aantal")
-                data["aantal"] = aantal
-            # Nieuw: schoon en onbeschadigd (voor wissers)
-            if soort == "Wissers":
-                data["schoon_onbeschadigd"] = st.radio(f"Zijn de {soort.lower()} schoon en onbeschadigd?", ["Ja", "Nee"], index=0, key=f"{soort}_schoon_onbeschadigd") == "Ja"
-            # Nieuw: advies vervangen/extra plaatsen
-            data["advies_vervangen_extra"] = st.radio(f"Advies: {soort.lower()} vervangen of extra plaatsen nodig?", ["Nee", "Ja"], index=0, key=f"{soort}_advies_vervangen_extra") == "Ja"
-            if data["advies_vervangen_extra"]:
-                data["advies_toelichting"] = st.text_area(f"Toelichting advies voor {soort.lower()} (optioneel)", key=f"{soort}_advies_toelichting")
-            data["opmerkingen"] = st.text_area(f"Opmerkingen / Advies {soort.lower()} (optioneel)", key=f"{soort}_opmerkingen")
-            data["fotos"] = st.file_uploader(f"Upload foto's van {soort.lower()}", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key=fotos_key)
-            if data["fotos"]:
-                st.success(f"{len(data['fotos'])} foto's geüpload")
-        return data
+            return data
 
     # --- Gebruik inspectieformulier voor matten en wissers ---
     matten_data = None
