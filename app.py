@@ -447,310 +447,75 @@ with form_tab:
                 st.success(f"{len(data['fotos'])} foto's geüpload")
             return data
         else:
-            skip = st.radio(f"{soort} inspectie uitvoeren?", ["Ja", "Nee"], index=0, key=f"{soort}_skip") == "Nee"
-            data = {"skip": skip}
-            if skip:
-                data["skip_reden"] = st.text_area(f"Reden voor overslaan van {soort.lower()} inspectie", key=f"{soort}_skip_reden")
-            else:
-                data["frequentie_correct"] = st.radio("Klopt de frequentie?", ["Ja", "Nee"], index=0, key=f"{soort}_frequentie_correct") == "Ja"
-                data["juiste_plek"] = st.radio(f"Liggen {soort.lower()} op de juiste plek?", ["Ja", "Nee"], index=0, key=f"{soort}_juiste_plek") == "Ja"
-                if soort == "Wissers":
-                    data["aanwezig"] = st.radio("Zijn de wissers aanwezig?", ["Ja", "Nee"], index=0, key="wissers_aanwezig") == "Ja"
-                # --- Matten-specifiek: standaard en logomatten ---
-                if soort == "Matten":
-                    # Initialiseer matten vanuit abonnementen bij eerste keer
-                    if 'matten_geïnitialiseerd' not in st.session_state:
-                        st.session_state.standaard_matten_lijst = []
-                        st.session_state.logomatten_lijst = []
-                        
-                        # Laat eerst alle informatie over de abonnementen zien
-                        st.markdown("### Informatie uit abonnement")
-                        for abo in abos:
-                            mat_type = abo.get('productomschrijving', 'Onbekend')
-                            aantal = int(abo.get('aantal', 1))
-                            bezoekritme = abo.get('bezoekritme', '1-wekelijks')
-                            afdeling = abo.get('afdeling', 'Algemeen')
-                            ligplaats = abo.get('ligplaats', 'Algemeen')
-                            
-                            st.info(f"**{mat_type}** | Aantal: {aantal}, Frequentie: {bezoekritme} | Afdeling: {afdeling}, Ligplaats: {ligplaats}")
-                            
-                            # Maak voor elke mat in het abonnement een invoer
-                            ligplaatsen = abo.get("ligplaatsen", [{"afdeling": afdeling, "ligplaats": ligplaats, "aantal": aantal}])
-                            
-                            for loc in ligplaatsen:
-                                aantal_op_locatie = loc.get("aantal", 1)
-                                loc_afdeling = loc.get("afdeling", afdeling)
-                                loc_ligplaats = loc.get("ligplaats", ligplaats)
-                                
-                                # Maak voor elke mat op deze locatie een invoer
-                                for i in range(aantal_op_locatie):
-                                    mat_entry = {
-                                        "afdeling": loc_afdeling,
-                                        "ligplaats": loc_ligplaats,
-                                        "mat_type": mat_type,
-                                        "aantal": 1,  # 1 per invoer
-                                        "bezoekritme": bezoekritme,
-                                        "schoon_onbeschadigd": True,
-                                        "vuilgraad_label": "Licht vervuild",
-                                        "aanwezig": True,
-                                        "abo_ref": abo  # Referentie naar het abonnement
-                                    }
-                                    
-                                    # Bepaal of het een standaard mat of logomat is
-                                    if "effektmat" in mat_type.lower():
-                                        st.session_state.standaard_matten_lijst.append(mat_entry)
-                                    else:
-                                        mat_entry["barcode"] = ""  # Voeg barcodeveld toe voor logomatten
-                                        st.session_state.logomatten_lijst.append(mat_entry)
-                    
-                    st.session_state.matten_geïnitialiseerd = True
-                
-                # Verzamel alle unieke afdelingen en ligplaatsen uit de abonnementen
-                abonnement_afdelingen = set()
-                abonnement_ligplaatsen = set()
-                for abo in abos:
-                    if 'afdeling' in abo and abo['afdeling']:
-                        abonnement_afdelingen.add(abo['afdeling'])
-                    if 'ligplaats' in abo and abo['ligplaats']:
-                        abonnement_ligplaatsen.add(abo['ligplaats'])
-                    for loc in abo.get('ligplaatsen', []):
-                        if 'afdeling' in loc and loc['afdeling']:
-                            abonnement_afdelingen.add(loc['afdeling'])
-                        if 'ligplaats' in loc and loc['ligplaats']:
-                            abonnement_ligplaatsen.add(loc['ligplaats'])
-                # Voeg ook alle reeds gekozen waarden toe
-                for mat in st.session_state.standaard_matten_lijst + st.session_state.logomatten_lijst:
-                    abonnement_afdelingen.add(mat.get('afdeling', ''))
-                    abonnement_ligplaatsen.add(mat.get('ligplaats', ''))
-                # Voeg voorbeeldlocaties toe
-                for loc in get_voorbeeld_locaties():
-                    abonnement_afdelingen.add(loc["afdeling"])
-                    abonnement_ligplaatsen.add(loc["ligplaats"])
-                # Maak gesorteerde lijsten
-                afdelingen = sorted([a for a in abonnement_afdelingen if a])
-                ligplaatsen = sorted([l for l in abonnement_ligplaatsen if l])
-                
-                # Nieuwe interface met tabs voor standaard matten en logomatten
-                standaard_tab, logo_tab = st.tabs(["Standaard Matten (Effektmatten)", "Logomatten"])
-                
-                # Standaard matten tab
-                with standaard_tab:
-                    st.markdown("### Standaard matten")
-                    
-                    # Verwijder knoppen voor toevoegen/verwijderen
-                    # Maak vooraf standaard matten aan op basis van abonnementen als dit nog niet is gebeurd
-                    if 'matten_geïnitialiseerd' not in st.session_state:
-                        st.session_state.standaard_matten_lijst = []
-                        st.session_state.logomatten_lijst = []
-                        
-                        # Laat eerst alle informatie over de abonnementen zien
-                        st.markdown("### Informatie uit abonnement")
-                        for abo in abos:
-                            mat_type = abo.get('productomschrijving', 'Onbekend')
-                            aantal = int(abo.get('aantal', 1))
-                            bezoekritme = abo.get('bezoekritme', '1-wekelijks')
-                            afdeling = abo.get('afdeling', 'Algemeen')
-                            ligplaats = abo.get('ligplaats', 'Algemeen')
-                            
-                            st.info(f"**{mat_type}** | Aantal: {aantal}, Frequentie: {bezoekritme} | Afdeling: {afdeling}, Ligplaats: {ligplaats}")
-                            
-                            # Maak voor elke mat in het abonnement een invoer
-                            ligplaatsen = abo.get("ligplaatsen", [{"afdeling": afdeling, "ligplaats": ligplaats, "aantal": aantal}])
-                            
-                            for loc in ligplaatsen:
-                                aantal_op_locatie = loc.get("aantal", 1)
-                                loc_afdeling = loc.get("afdeling", afdeling)
-                                loc_ligplaats = loc.get("ligplaats", ligplaats)
-                                
-                                # Maak voor elke mat op deze locatie een invoer
-                                for i in range(aantal_op_locatie):
-                                    mat_entry = {
-                                        "afdeling": loc_afdeling,
-                                        "ligplaats": loc_ligplaats,
-                                        "mat_type": mat_type,
-                                        "aantal": 1,  # 1 per invoer
-                                        "bezoekritme": bezoekritme,
-                                        "schoon_onbeschadigd": True,
-                                        "vuilgraad_label": "Licht vervuild",
-                                        "aanwezig": True,
-                                        "abo_ref": abo  # Referentie naar het abonnement
-                                    }
-                                    
-                                    # Bepaal of het een standaard mat of logomat is
-                                    if "effektmat" in mat_type.lower():
-                                        st.session_state.standaard_matten_lijst.append(mat_entry)
-                                    else:
-                                        mat_entry["barcode"] = ""  # Voeg barcodeveld toe voor logomatten
-                                        st.session_state.logomatten_lijst.append(mat_entry)
-                        
-                        st.session_state.matten_geïnitialiseerd = True
-                    
-                    # Check of er standaard matten zijn
-                    if not st.session_state.standaard_matten_lijst:
-                        st.info("Er zijn geen standaard matten (Effektmatten) in het abonnement gevonden.")
-                    else:
-                        # Tabulaire interface voor standaard matten
-                        st.markdown("#### Registreer de status van alle standaard matten")
-                        st.markdown("Bewerk de vuilgraad en status in deze tabel. Wijzigingen worden automatisch opgeslagen.")
-                        
-                        # Maak een dataframe met alle matten
-                        mat_data = []
-                        for i, mat in enumerate(st.session_state.standaard_matten_lijst):
-                            mat_data.append({
-                                "Productomschrijving": mat["mat_type"],
-                                "Afdeling": mat["afdeling"],
-                                "Ligplaats": mat["ligplaats"],
-                                "Aanwezig": mat["aanwezig"],
-                                "Schoon/onbeschadigd": mat["schoon_onbeschadigd"],
-                                "Vuilgraad": mat.get("vuilgraad_label", "Licht vervuild")
-                            })
-                        
-                        # Maak een dataframe
-                        if mat_data:
-                            df = pd.DataFrame(mat_data)
-                            
-                            # Reorganiseer de kolommen zodat Afdeling, Ligplaats, Productomschrijving vooraan staan
-                            column_order = ["Afdeling", "Ligplaats", "Productomschrijving", "Vuilgraad", "Aanwezig", "Schoon/onbeschadigd"]
-                            columns_to_use = [col for col in column_order if col in df.columns]
-                            other_columns = [col for col in df.columns if col not in column_order]
-                            final_column_order = columns_to_use + other_columns
-                            
-                            # Pas het dataframe aan met de nieuwe kolomvolgorde
-                            df = df[final_column_order]
-                            
-                            # Maak een bewerker voor de tabel
-                            edited_df = st.data_editor(
-                                df,
-                                column_config={
-                                    "Productomschrijving": st.column_config.TextColumn("Productomschrijving", disabled=True),
-                                    "Afdeling": st.column_config.SelectboxColumn("Afdeling", options=afdelingen, required=True),
-                                    "Ligplaats": st.column_config.SelectboxColumn("Ligplaats", options=ligplaatsen, required=True),
-                                    "Aanwezig": st.column_config.CheckboxColumn("Aanwezig"),
-                                    "Schoon/onbeschadigd": st.column_config.CheckboxColumn("Schoon/onbeschadigd"),
-                                    "Vuilgraad": st.column_config.SelectboxColumn("Vuilgraad", options=["Schoon", "Licht vervuild", "Sterk vervuild"], required=True)
-                                },
-                                hide_index=True,
-                                num_rows="dynamic",
-                                key="standaard_matten_editor"
-                            )
-                            
-                            # Verwerk de wijzigingen in de session state
-                            if edited_df is not None:
-                                for i, row in edited_df.iterrows():
-                                    mat = st.session_state.standaard_matten_lijst[i]
-                                    mat["afdeling"] = row["Afdeling"]
-                                    mat["ligplaats"] = row["Ligplaats"]
-                                    mat["aanwezig"] = bool(row["Aanwezig"])
-                                    mat["schoon_onbeschadigd"] = bool(row["Schoon/onbeschadigd"])
-                                    mat["vuilgraad_label"] = row["Vuilgraad"]
-                                    if row["Vuilgraad"] == "Schoon":
-                                        mat["vuilgraad"] = 0
-                                    elif row["Vuilgraad"] == "Licht vervuild":
-                                        mat["vuilgraad"] = 1
-                                    else:
-                                        mat["vuilgraad"] = 2
-                        
-                        # Voeg een preview toe van hoe het in het rapport eruit zal zien
-                        with st.expander("Voorbeeldweergave rapport"):
-                            st.markdown("#### Standaard matten in rapport")
-                            st.markdown("| Afdeling | Ligplaats | Schoon/heel | Vuilgraad |")
-                            st.markdown("|----------|-----------|-------------|----------|")
-                            for mat in st.session_state.standaard_matten_lijst:
-                                if mat["aanwezig"]:
-                                    vuilgraad_str = vuilgraad_visualisatie(mat.get('vuilgraad_label', 'Licht vervuild'))
-                                    st.markdown(f"| {mat['afdeling']} | {mat['ligplaats']} | {'JA' if mat['schoon_onbeschadigd'] else 'NEE'} | {vuilgraad_str} |")
-                
-                # Logomatten tab
-                with logo_tab:
-                    st.markdown("### Logomatten")
-                    
-                    # Check of er logomatten zijn
-                    if not st.session_state.logomatten_lijst:
-                        st.info("Er zijn geen logomatten in het abonnement gevonden.")
-                    else:
-                        # Tabulaire interface voor logomatten
-                        st.markdown("#### Registreer de status van alle logomatten")
-                        st.markdown("Bewerk de vuilgraad en status in deze tabel. Wijzigingen worden automatisch opgeslagen.")
-                        
-                        # Maak een dataframe met alle logomatten
-                        mat_data = []
-                        
-                        # Verwerk de lijst batchgewijs
-                        for i, mat in enumerate(st.session_state.logomatten_lijst):
-                            mat_data.append({
-                                "Productomschrijving": mat["mat_type"],
-                                "Afdeling": mat["afdeling"],
-                                "Ligplaats": mat["ligplaats"],
-                                "Barcode": mat.get("barcode", ""),
-                                "Leeftijd": extract_mat_leeftijd(mat.get("barcode", "")) if mat.get("barcode") else "-",
-                                "Aanwezig": mat["aanwezig"],
-                                "Schoon/onbeschadigd": mat["schoon_onbeschadigd"],
-                                "Vuilgraad": mat.get("vuilgraad_label", "Licht vervuild")
-                            })
-                        
-                        # Maak een dataframe
-                        if mat_data:
-                            df = pd.DataFrame(mat_data)
-                            
-                            # Reorganiseer de kolommen zodat Afdeling, Ligplaats, Productomschrijving vooraan staan
-                            column_order = ["Afdeling", "Ligplaats", "Productomschrijving", "Vuilgraad", "Barcode", "Leeftijd", "Aanwezig", "Schoon/onbeschadigd"]
-                            columns_to_use = [col for col in column_order if col in df.columns]
-                            other_columns = [col for col in df.columns if col not in column_order]
-                            final_column_order = columns_to_use + other_columns
-                            
-                            # Pas het dataframe aan met de nieuwe kolomvolgorde
-                            df = df[final_column_order]
-                            
-                            # Maak een bewerker voor de tabel
-                            edited_df = st.data_editor(
-                                df,
-                                column_config={
-                                    "Productomschrijving": st.column_config.TextColumn("Productomschrijving", disabled=True),
-                                    "Afdeling": st.column_config.SelectboxColumn("Afdeling", options=afdelingen, required=True),
-                                    "Ligplaats": st.column_config.SelectboxColumn("Ligplaats", options=ligplaatsen, required=True),
-                                    "Barcode": st.column_config.TextColumn("Barcode"),
-                                    "Leeftijd": st.column_config.TextColumn("Leeftijd", disabled=True),
-                                    "Aanwezig": st.column_config.CheckboxColumn("Aanwezig"),
-                                    "Schoon/onbeschadigd": st.column_config.CheckboxColumn("Schoon/onbeschadigd"),
-                                    "Vuilgraad": st.column_config.SelectboxColumn("Vuilgraad", options=["Schoon", "Licht vervuild", "Sterk vervuild"], required=True)
-                                },
-                                hide_index=True,
-                                num_rows="dynamic",
-                                key="logomatten_editor"
-                            )
-                            
-                            # Verwerk de wijzigingen in de session state
-                            if edited_df is not None:
-                                for i, row in edited_df.iterrows():
-                                    mat = st.session_state.logomatten_lijst[i]
-                                    mat["afdeling"] = row["Afdeling"]
-                                    mat["ligplaats"] = row["Ligplaats"]
-                                    mat["barcode"] = row["Barcode"]
-                                    mat["aanwezig"] = bool(row["Aanwezig"])
-                                    mat["schoon_onbeschadigd"] = bool(row["Schoon/onbeschadigd"])
-                                    mat["vuilgraad_label"] = row["Vuilgraad"]
-                                    if row["Vuilgraad"] == "Schoon":
-                                        mat["vuilgraad"] = 0
-                                    elif row["Vuilgraad"] == "Licht vervuild":
-                                        mat["vuilgraad"] = 1
-                                    else:
-                                        mat["vuilgraad"] = 2
-                        
-                        # Voeg een preview toe van hoe het in het rapport eruit zal zien
-                        with st.expander("Voorbeeldweergave rapport"):
-                            st.markdown("#### Logomatten in rapport")
-                            st.markdown("| Afdeling | Ligplaats | Barcode | Leeftijd | Schoon/heel | Vuilgraad |")
-                            st.markdown("|----------|-----------|---------|----------|-------------|----------|")
-                            for idx, mat in enumerate(st.session_state.logomatten_lijst):
-                                if mat["aanwezig"]:
-                                    barcode = mat.get('barcode', '-')
-                                    leeftijd = extract_mat_leeftijd(barcode) if barcode and barcode != '-' else '-'
-                                    vuilgraad_str = vuilgraad_visualisatie(mat.get('vuilgraad_label', 'Licht vervuild'))
-                                    st.markdown(f"| {mat['afdeling']} | {mat['ligplaats']} | {barcode} | {leeftijd} | {'JA' if mat['schoon_onbeschadigd'] else 'NEE'} | {vuilgraad_str} |")
-                        
-                        # Sla de mattenlijsten op in data zodat ze in het rapport gebruikt kunnen worden
-                        data["standaard_matten"] = st.session_state.standaard_matten_lijst.copy()
-                        data["logomatten"] = st.session_state.logomatten_lijst.copy()
+            st.markdown("### 1.1 Zien we andere matten liggen?")
+            andere_mat_koop = st.number_input("Aantal andere matten (koop)", min_value=0, value=0, step=1, key="andere_mat_koop")
+            andere_mat_huur = st.number_input("Aantal andere matten (huur/concurrent)", min_value=0, value=0, step=1, key="andere_mat_huur")
+            data["andere_mat_koop"] = andere_mat_koop
+            data["andere_mat_huur"] = andere_mat_huur
+
+            st.markdown("### 1.2 Zijn er matten gestopt?")
+            gestopte_matten = st.checkbox("Zijn er matten gestopt sinds het laatste servicemoment?")
+            data["gestopte_matten"] = gestopte_matten
+            if gestopte_matten:
+                data["gestopte_matten_info"] = st.text_area("Welke matten zijn gestopt? (Vul artikel, stopdatum, ligplaats, is die weg, afbeelding, etc. in)")
+                data["actie_ophaleen_mat"] = st.radio("Is de mat daadwerkelijk weg?", ["Ja", "Nee", "Weet niet"]) 
+                if data["actie_ophaleen_mat"] == "Nee":
+                    data["actie_binnendienst_mat"] = st.text_area("Actie: Vraag aan binnendienst of SM of de mat toch echt niet gebruikt wordt. Anders ophaalopdracht aanmaken.")
+
+            st.markdown("### 1.3 Ligplaatsen en aantallen")
+            st.info("Controleer of de ligplaatsen goed zijn ingevuld. Als er 'Algemeen/Algemeen' staat, komt er automatisch een to-do voor de SM.")
+            matten_lijst = st.session_state.get('standaard_matten_lijst', []) + st.session_state.get('logomatten_lijst', [])
+            for i, mat in enumerate(matten_lijst):
+                afdeling = mat.get('afdeling', '')
+                ligplaats = mat.get('ligplaats', '')
+                if afdeling == 'Algemeen' and ligplaats == 'Algemeen':
+                    st.warning(f"Let op: Mat {i+1} heeft locatie 'Algemeen/Algemeen'. Actie voor SM om ligplaatsen goed aan te maken in TMS.")
+                st.markdown(f"**Mat {i+1}:** {mat.get('mat_type', '')} | Afdeling: {afdeling} | Ligplaats: {ligplaats} | Aantal: {mat.get('aantal', 1)} | Bezoekritme: {mat.get('bezoekritme', '-')}")
+                aanwezig = st.checkbox(f"Is deze mat aanwezig?", value=mat.get('aanwezig', True), key=f"mat_aanwezig_{i}")
+                vuilgraad = st.selectbox(f"Vuilgraad mat {i+1}", ["Schoon", "Licht vervuild", "Sterk vervuild"], index=["Schoon", "Licht vervuild", "Sterk vervuild"].index(mat.get('vuilgraad_label', 'Licht vervuild')), key=f"mat_vuilgraad_{i}")
+                mat['aanwezig'] = aanwezig
+                mat['vuilgraad_label'] = vuilgraad
+                mat['schoon_onbeschadigd'] = st.checkbox(f"Schoon/onbeschadigd?", value=mat.get('schoon_onbeschadigd', True), key=f"mat_schoon_{i}")
+                # Extra check: afwijking aantal
+                # (Hier kun je logica toevoegen voor te veel/te weinig matten tov abonnement)
+
+            data['matten_lijst'] = matten_lijst
+            data['matten_opmerking'] = st.text_area("Opmerkingen over matten/ligplaatsen (optioneel)")
+
+            st.markdown("### 1.4 Logomatten extra check")
+            logomatten = st.session_state.get('logomatten_lijst', [])
+            for i, mat in enumerate(logomatten):
+                st.markdown(f"**Logomat {i+1}:** {mat.get('mat_type', '')} | Barcode: {mat.get('barcode', '-')}")
+                foto_barcode = st.file_uploader(f"Upload foto van barcode voor logomat {i+1}", type=["jpg", "jpeg", "png"], key=f"foto_barcode_{i}")
+                representatief = st.slider(f"Hoe representatief is deze mat nog voor de klant? (1=slecht, 10=uitstekend)", min_value=1, max_value=10, value=7, key=f"mat_score_{i}")
+                mat['representatief_score'] = representatief
+                mat['logo_ok'] = st.checkbox(f"Klopt het logo?", value=True, key=f"logo_ok_{i}")
+                mat['scheuren'] = st.checkbox(f"Zitten er scheuren in?", value=False, key=f"scheuren_{i}")
+                # Logica: ouder dan 4 jaar én score lager dan 5 = vervangen
+                leeftijd = extract_mat_leeftijd(mat.get('barcode', ''))
+                mat['leeftijd'] = leeftijd
+                if 'jaar' in leeftijd:
+                    try:
+                        jaren = int(leeftijd.split(' ')[0])
+                        if jaren >= 4 and representatief < 5:
+                            st.warning(f"Advies: deze logomat is ouder dan 4 jaar en heeft een lage score. Vervangen!")
+                    except:
+                        pass
+
+            data['logomatten'] = logomatten
+            data['logomatten_opmerking'] = st.text_area("Opmerkingen over logomatten (optioneel)")
+
+            st.markdown("### 1.5 Extra locaties/aantallen")
+            extra_locaties = st.text_area("Zijn er nog matten op andere locaties? Geef aan waar, wat en het totaal. Is het een uitbreiding of vervanging?")
+            data['extra_locaties'] = extra_locaties
+
+            st.markdown("### 1.6 Advies en acties")
+            advies = st.text_area("Advies voor SM (to-do), bijvoorbeeld bij afwijkend aantal, vervuiling, of ligplaatsen.")
+            data['advies'] = advies
+
+            data['fotos'] = st.file_uploader("Upload foto's van matten en locaties", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key=fotos_key)
+            if data['fotos']:
+                st.success(f"{len(data['fotos'])} foto's geüpload")
             return data
 
     # --- Gebruik inspectieformulier voor matten en wissers ---
