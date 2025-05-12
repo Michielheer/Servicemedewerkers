@@ -838,6 +838,25 @@ with form_tab:
                             ),
                             unsafe_allow_html=True
                         )
+
+                    # Voeg na het genereren van het AI-rapport in het rapportage-tabblad toe:
+                    from datetime import datetime
+
+                    # ... na het genereren van ai_rapport en pdf_ai_rapport ...
+                    try:
+                        rapport_data = {
+                            "relatienummer": relatienummer,
+                            "klantnaam": klantnaam,
+                            "inspecteur": inspecteur_naam,
+                            "datum": inspectie_datum,
+                            "rapport_tekst": ai_rapport,
+                            "pdf_base64": base64.b64encode(pdf_ai_rapport).decode() if 'pdf_ai_rapport' in locals() and pdf_ai_rapport else None,
+                            "aangemaakt_op": datetime.now().isoformat()
+                        }
+                        supabase.table("service_rapporten").insert(rapport_data).execute()
+                        st.success("Rapport succesvol opgeslagen in de database.")
+                    except Exception as e:
+                        st.warning(f"Opslaan in database mislukt: {e}")
                 except Exception as e:
                     st.warning(f"AI-rapportage mislukt: {e}")
             else:
