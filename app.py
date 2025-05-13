@@ -24,15 +24,59 @@ import re
 import hashlib
 import smtplib
 from email.message import EmailMessage
+from datetime import datetime
 
-# Voeg deze hulpfunctie direct boven de inspectieformulier-functie toe:
+# --- Hulpfuncties
+
+def log_wijziging(relatienummer, klantnaam, soort_wijziging, productnummer, veld, oude_waarde, nieuwe_waarde, gewijzigd_door, opmerking=None):
+    try:
+        log_entry = {
+            "relatienummer": str(relatienummer),
+            "klantnaam": klantnaam,
+            "soort_wijziging": soort_wijziging,
+            "productnummer": productnummer,
+            "veld": veld,
+            "oude_waarde": str(oude_waarde),
+            "nieuwe_waarde": str(nieuwe_waarde),
+            "gewijzigd_door": gewijzigd_door,
+            "status": "nieuw",
+            "opmerking": opmerking
+        }
+        response = supabase.table("service_wijzigingen_log").insert(log_entry).execute()
+        return True
+    except Exception as e:
+        st.error(f"Fout bij loggen van wijziging: {e}")
+        return False
+
+def vergelijk_en_log_wijzigingen(oud_data, nieuw_data, relatienummer, klantnaam, soort_wijziging, gewijzigd_door):
+    try:
+        for item in nieuw_data:
+            productnummer = item.get('productnummer', '')
+            for veld, nieuwe_waarde in item.items():
+                oud_item = next((x for x in oud_data if x.get('productnummer') == productnummer), None)
+                oude_waarde = oud_item.get(veld, '') if oud_item else ''
+                if str(oude_waarde) != str(nieuwe_waarde):
+                    log_wijziging(
+                        relatienummer=relatienummer,
+                        klantnaam=klantnaam,
+                        soort_wijziging=soort_wijziging,
+                        productnummer=productnummer,
+                        veld=veld,
+                        oude_waarde=oude_waarde,
+                        nieuwe_waarde=nieuwe_waarde,
+                        gewijzigd_door=gewijzigd_door
+                    )
+        return True
+    except Exception as e:
+        st.error(f"Fout bij vergelijken en loggen van wijzigingen: {e}")
+        return False
+
 def add_todo_action(text):
     if 'todo_list' not in st.session_state:
         st.session_state['todo_list'] = []
     if not any(todo['text'] == text for todo in st.session_state['todo_list']):
         st.session_state['todo_list'].append({"text": text, "done": False})
 
-# Hulpfunctie voor vuilgraad visualisatie
 def vuilgraad_visualisatie(vuilgraad_label):
     if vuilgraad_label == "Schoon":
         return "🟢 Schoon"
@@ -40,6 +84,107 @@ def vuilgraad_visualisatie(vuilgraad_label):
         return "🟡 Licht vervuild" 
     else:
         return "🔴 Sterk vervuild"
+
+def genereer_todo_list():
+    if 'todo_list' not in st.session_state:
+        st.session_state['todo_list'] = []
+    # Matten (standaard en logo)
+    for mat in st.session_state.get('standaard_matten_lijst', []) + st.session_state.get('logomatten_lijst', []):
+        mat_naam = mat.get('mat_type', 'Onbekend')
+        afdeling = mat.get('afdeling', '')
+        ligplaats = mat.get('ligplaats', '')
+        locatie = f" ({afdeling}, {ligplaats})" if afdeling or ligplaats else ""
+        if not mat.get('aanwezig', False):
+            add_todo_action(f"Controleer waarom mat '{mat_naam}'{locatie} niet aanwezig is.")
+        if mat.get('aantal', 1) == 0:
+            add_todo_action(f"Controleer of mat '{mat_naam}'{locatie} verwijderd moet worden.")
+        if mat.get('vuilgraad_label', '') == 'Sterk vervuild':
+            add_todo_action(f"Mat '{mat_naam}'{locatie} vervangen of reinigen (sterk vervuild).")
+        if not mat.get('schoon_onbeschadigd', True):
+            add_todo_action(f"Mat '{mat_naam}'{locatie} inspecteren op schade.")
+        if mat.get('opmerking', '').strip():
+            add_todo_action(f"Controleer opmerking bij mat '{mat_naam}'{locatie}: {mat['opmerking']}")
+        if afdeling == 'Algemeen' and ligplaats == 'Algemeen':
+            add_todo_action(f"Specificeer afdeling en ligplaats voor mat '{mat_naam}' (nu: Algemeen/Algemeen)")
+
+    # Wissers
+    wissers_tabel = st.session_state.get('wissers_tabel', [])
+    for wisser in wissers_tabel:
+        wisser_type = wisser.get('Type wisser', 'Onbekend')
+        afdeling = wisser.get('Afdeling', '')
+        ligplaats = wisser.get('Ligplaats', '')
+        if wisser.get('Aantal', 1) == 0:
+            add_todo_action(f"Controleer of wisser van type '{wisser_type}' verwijderd moet worden.")
+        if wisser.get('Opmerking', '').strip():
+            add_todo_action(f"Controleer opmerking bij wisser van type '{wisser_type}': {wisser['Opmerking']}")
+        if afdeling == 'Algemeen' and ligplaats == 'Algemeen':
+            add_todo_action(f"Specificeer afdeling en ligplaats voor wisser '{wisser_type}' (nu: Algemeen/Algemeen)")
+
+    # Toebehoren
+    toebehoren_tabel = st.session_state.get('toebehoren_tabel', [])
+    for acc in toebehoren_tabel:
+        acc_type = acc.get('Type accessoire', 'Onbekend')
+        aantal = acc.get('Aantal te vervangen', 0)
+        if aantal > 0:
+            add_todo_action(f"Vervang {aantal}x '{acc_type}' bij wissers.")
+        if acc.get('Opmerking', '').strip():
+            add_todo_action(f"Controleer opmerking bij toebehoren '{acc_type}': {acc['Opmerking']}")
+
+def save_contact_wijzigingen(updated_df, relatienummer, gewijzigd_door="onbekend"):
+    try:
+        # Haal bestaande contactpersonen uit de database
+        db_contacts = supabase.table("RelatiesImport").select("*").eq("Relatienummer", str(relatienummer)).execute().data
+        db_emails = set([c.get("E-mailadres", "") for c in db_contacts if c.get("E-mailadres")])
+
+        # E-mails in de huidige tabel
+        table_emails = set(updated_df["E-mailadres"].dropna().astype(str))
+
+        # 1. Toevoegen of wijzigen: alleen loggen
+        for _, row in updated_df.iterrows():
+            if not row["E-mailadres"]:
+                continue  # sla lege rijen over
+            log_entry = {
+                "relatienummer": str(relatienummer),
+                "email": row["E-mailadres"],
+                "voornaam": row["Voornaam"],
+                "tussenvoegsel": row["Tussenvoegsel"],
+                "achternaam": row["Achternaam"],
+                "functie": row["Functie"],
+                "telefoonnummer": row["Telefoonnummer"],
+                "klantenportaal_gebruikersnaam": row["Klantenportaal_gebruikersnaam"],
+                "nog_in_dienst": row["Nog_in_dienst"],
+                "actie": "toegevoegd_of_gewijzigd",
+                "verwijderd_op": datetime.now().isoformat(),
+                "verwijderd_door": gewijzigd_door
+            }
+            supabase.table("contactpersonen_log").insert(log_entry).execute()
+
+        # 2. Verwijderen: alleen loggen
+        to_delete = db_emails - table_emails
+        for contact in db_contacts:
+            email = contact.get("E-mailadres", "")
+            if email in to_delete:
+                log_entry = {
+                    "relatienummer": str(relatienummer),
+                    "email": email,
+                    "voornaam": contact.get("Voornaam", ""),
+                    "tussenvoegsel": contact.get("Tussenvoegsel", ""),
+                    "achternaam": contact.get("Achternaam", ""),
+                    "functie": contact.get("Functie", ""),
+                    "telefoonnummer": contact.get("Telefoonnummer", ""),
+                    "klantenportaal_gebruikersnaam": contact.get("Klantenportaal_gebruikersnaam", ""),
+                    "nog_in_dienst": contact.get("Nog_in_dienst", True),
+                    "actie": "verwijderd",
+                    "verwijderd_op": datetime.now().isoformat(),
+                    "verwijderd_door": gewijzigd_door
+                }
+                supabase.table("contactpersonen_log").insert(log_entry).execute()
+
+        st.success("Alle wijzigingen zijn gelogd in contactpersonen_log!")
+        return True
+    except Exception as e:
+        st.error(f"Loggen in database mislukt: {e}")
+        return False
 
 # --- Aangepaste PDF klasse ---
 class LavansReport(FPDF):
@@ -296,6 +441,12 @@ klant_keuze = st.selectbox(
 relatienummer = int(klant_keuze.split(" - ")[0])
 klantnaam = klanten_uniek[str(relatienummer)]
 
+# Wanneer een klant wordt geselecteerd, sla de huidige datum en tijd op
+if 'geselecteerde_klant' not in st.session_state or st.session_state.geselecteerde_klant != relatienummer:
+    st.session_state.geselecteerde_klant = relatienummer
+    st.session_state.bezoek_datum = date.today()
+    st.session_state.bezoek_tijd = datetime.now().strftime("%H:%M")
+
 # --- Abonnementen ophalen ---
 abon_data = supabase.table("abonnementen").select("*").eq("relatienummer", relatienummer).execute().data
 matten_abos = [a for a in abon_data if a.get("activiteit", "").lower() == "matten"]
@@ -307,22 +458,23 @@ st.session_state.logomatten_lijst = []
 
 # Bouw de mattenlijsten op uit de abonnementen
 for abo in matten_abos:
+    productnummer = str(abo.get("productnummer", ""))
     mat_info = {
         "mat_type": abo.get("productomschrijving", ""),
         "afdeling": abo.get("afdeling", "Algemeen"),
         "ligplaats": abo.get("ligplaats", "Algemeen"),
-        "aanwezig": True,
+        "aantal": abo.get("aantal", 0),
+        "aanwezig": False,
         "schoon_onbeschadigd": True,
         "vuilgraad_label": "Licht vervuild",
         "vuilgraad": 1,
         "barcode": abo.get("barcode", ""),
         "bezoekritme": abo.get("bezoekritme", "")
     }
-    # Bepaal of het een logomat is (barcode of productomschrijving bevat 'logo')
-    if abo.get("barcode") or "logo" in abo.get("productomschrijving", "").lower():
-        st.session_state.logomatten_lijst.append(mat_info)
-    else:
+    if productnummer.startswith("00M"):
         st.session_state.standaard_matten_lijst.append(mat_info)
+    elif productnummer.startswith("L"):
+        st.session_state.logomatten_lijst.append(mat_info)
 
 # Contactpersoon direct via relatienummer ophalen
 contactpersonen_data = supabase.table("RelatiesImport").select("*").eq("Relatienummer", str(relatienummer)).execute().data
@@ -342,7 +494,11 @@ for contactpersoon in contactpersonen_data:
 contactpersoon_str = ", ".join(contactpersonen_lijst) if contactpersonen_lijst else "-"
 
 # --- Voeg tabs toe voor formulier en rapportage ---
-form_tab, report_tab, todo_tab = st.tabs(["📝 Inspectieformulier", "📊 Rapportage", "📝 To-do lijst"])
+# Toon alleen Inspectieformulier en To-do lijst, verberg Rapportage en Dataverrijking
+tabs = ["📝 Inspectieformulier", "📝 To-do lijst"]
+form_tab, todo_tab = st.tabs(tabs)
+# De variabelen report_tab en data_tab blijven beschikbaar voor later gebruik, maar zijn nu niet zichtbaar.
+# report_tab, data_tab = None, None
 
 with form_tab:
     # --- Contactpersoon selectie als eerste vraag ---
@@ -368,252 +524,242 @@ with form_tab:
         geselecteerd = contactpersoon_index
         if "(" in geselecteerd and geselecteerd.endswith(")"):
             naam, email = geselecteerd.rsplit("(", 1)
-            contact_naam = st.text_input("Naam contactpersoon", naam.strip())
-            contact_email = st.text_input("E-mailadres contactpersoon", email[:-1].strip())
+            contact_naam = st.text_input("Naam contactpersoon", value=naam.strip())
+            contact_email = st.text_input("E-mailadres contactpersoon", value=email[:-1].strip())
         else:
-            contact_naam = st.text_input("Naam contactpersoon", geselecteerd.strip())
-            contact_email = st.text_input("E-mailadres contactpersoon", "")
+            contact_naam = st.text_input("Naam contactpersoon", value=geselecteerd.strip())
+            contact_email = st.text_input("E-mailadres contactpersoon")
 
     # --- Eén inspecteur en datum bovenaan ---
     st.markdown("---")
     st.subheader("Inspectiegegevens")
-    inspecteur_naam = st.text_input("Naam inspecteur / chauffeur", value="Roberto")
-    inspectie_datum = st.date_input("Datum bezoek", date.today())
+    inspecteur_naam = st.text_input("Service medewerker", value="Roberto")
+    
+    # Gebruik de opgeslagen datum en tijd als standaardwaarden
+    col1, col2 = st.columns(2)
+    with col1:
+        inspectie_datum = st.date_input("Datum bezoek", value=st.session_state.get('bezoek_datum', date.today()))
+    with col2:
+        inspectie_tijd = st.text_input("Tijdstip bezoek", value=st.session_state.get('bezoek_tijd', datetime.now().strftime("%H:%M")))
 
-    # Laatste bezoek
-    laatste_bezoek = st.date_input("Laatste bezoek", value=date.today())
+    # Laatste bezoek altijd leeg
+    laatste_bezoek = st.date_input("Laatste bezoek", value=None, key="laatste_bezoek")
 
-    # Bereken het verschil in maanden
-    maanden_verschil = (inspectie_datum.year - laatste_bezoek.year) * 12 + (inspectie_datum.month - laatste_bezoek.month)
+    # Functie om alleen echte wissers te tellen
+    def is_echte_wisser(product):
+        frequentie = product.get('bezoekritme', None)
+        return frequentie not in [None, '', 'none']
 
-    if laatste_bezoek > inspectie_datum:
-        st.warning("De datum van het laatste bezoek ligt in de toekomst!")
-    elif maanden_verschil < 6:
-        st.success("Geen inspectie nodig, laatste bezoek was minder dan 6 maanden geleden.")
-    else:
-        # --- Functie om alleen echte wissers te tellen ---
-        def is_echte_wisser(product):
-            frequentie = product.get('bezoekritme', None)
-            return frequentie not in [None, '', 'none']
+    # Hulpfunctie voor inspectieformulier
+    def inspectieformulier(soort, abos, fotos_key):
+        st.markdown(f"## Inspectieformulier {soort}")
+        data = {}
 
-        # --- Hulpfunctie voor inspectieformulier ---
-        def inspectieformulier(soort, abos, fotos_key):
-            st.markdown(f"## Inspectieformulier {soort}")
-            data = {}
-            if soort == "Wissers":
-                st.markdown("### 2.1 Zien we andere zaken staan?")
-                andere_zaken = st.text_area("Zie je andere schoonmaakmiddelen staan? (Bezems, wissers van andere leveranciers, etc.)")
-                data["andere_zaken"] = andere_zaken
-
-                st.markdown("### 2.2 Zijn er wissers gestopt?")
-                gestopte_wissers = st.checkbox("Zijn er wissers gestopt sinds het laatste servicemoment?")
-                data["gestopte_wissers"] = gestopte_wissers
-                if gestopte_wissers:
-                    data["gestopte_wissers_info"] = st.text_area("Welke wissers zijn gestopt? (Vul artikel, stopdatum, ligplaats, is die weg, afbeelding, etc. in)")
-                    data["actie_ophaleen"] = st.radio("Is de wisser daadwerkelijk weg?", ["Ja", "Nee", "Weet niet"]) 
-                    if data["actie_ophaleen"] == "Nee":
-                        data["actie_binnendienst"] = st.text_area("Actie: Vraag aan binnendienst of SM of de wisser toch echt niet gebruikt wordt. Anders ophaalopdracht aanmaken.")
-
-                st.markdown("### 2.3 Aantal wissers tellen (compact)")
-                st.info("Vul per type het totaal aantal aanwezige wissers in (ongeacht formaat).")
-                wissers_types = ["Industrial (Paars)", "Light Use (Grijs)", "Rood (Wederverkoper)"]
-                data["wissers_telling_compact"] = {}
-                for wisser_type in wissers_types:
-                    aantal = st.number_input(f"Aantal {wisser_type} (totaal)", min_value=0, value=0, step=1, key=f"{wisser_type}_totaal")
-                    data["wissers_telling_compact"][wisser_type] = aantal
-                data["wissers_telling_opmerking"] = st.text_area("Opmerking bij telling wissers (optioneel)")
-
-                st.markdown("### 2.4 Stelen en toebehoren")
-                st.info("Geef aan of alles nog in juiste staat is. Wat moet er vervangen worden?")
-                accessoires = ["Standaard steel", "Dubbele wissersteel", "Telescoopsteel", "Bak", "Muursteun"]
-                data["accessoires_vervangen"] = {}
-                for acc in accessoires:
-                    vervangen = st.number_input(f"Aantal te vervangen: {acc}", min_value=0, value=0, step=1, key=f"vervang_{acc}")
-                    data["accessoires_vervangen"][acc] = vervangen
-                data["accessoires_opmerking"] = st.text_area("Opmerking bij accessoires (optioneel)")
-
-                st.markdown("### 2.5 Verbruik vuile wissers")
-                aantal_vuil = st.number_input("Aantal vuile wissers bij wisselmoment", min_value=0, value=0, step=1, key="aantal_vuile_wissers")
-                data["aantal_vuile_wissers"] = aantal_vuil
-                data["verbruik_opmerking"] = st.text_area("Opmerking over verbruik (optioneel, alleen intern)")
-
-                st.markdown("### 2.6 Ligplaats & afdeling")
-                ligplaats_ok = st.radio("Is het duidelijk hoe de wisselplek is aangegeven?", ["Ja", "Nee"], key="ligplaats_ok")
-                data["ligplaats_ok"] = ligplaats_ok
-                data["ligplaats_opmerking"] = st.text_area("Opmerking bij ligplaats/afdeling (optioneel)")
-
-                st.markdown("### 2.7 Optimaliseren wisselfrequentie")
-                optimalisatie = st.radio("Is optimalisatie van de wisselfrequentie mogelijk?", ["Nee", "Ja, optimaliseren mogelijk"], key="optimalisatie_wissers")
-                data["optimalisatie_wissers"] = optimalisatie
-                if optimalisatie == "Ja, optimaliseren mogelijk":
-                    data["optimalisatie_toelichting"] = st.text_area("Toelichting optimalisatie (bespreek met klant, kosten blijven gelijk, etc.)")
-
-                data["fotos"] = st.file_uploader("Upload foto's van wissers en accessoires", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key=fotos_key)
-                if data["fotos"]:
-                    st.success(f"{len(data['fotos'])} foto's geüpload")
-
-                # Automatische to-do's voor wissers
-                if soort == "Wissers":
-                    if data.get('gestopte_wissers'):
-                        add_todo_action("Controleer gestopte wissers en voer ophaalopdracht uit.")
-                    if data.get('ligplaats_ok', '') == "Nee":
-                        add_todo_action("Ligplaats van wissers controleren en aanpassen in TMS.")
-                    accessoires_vervangen = data.get('accessoires_vervangen', {})
-                    if accessoires_vervangen and any(v > 0 for v in accessoires_vervangen.values()):
-                        add_todo_action("Vervang accessoires bij wissers volgens ingevulde aantallen.")
-
-                return data
+        # Alleen bij matten de mattenvraag tonen
+        if soort == "Matten":
+            st.markdown("### 1.1 Zien we matten van de concurrent liggen?")
+            andere_mat_aanwezig = st.radio("Zien we mat van de concurrent liggen?", ["Nee", "Ja"], key=f"andere_mat_aanwezig_{soort}")
+            data["andere_mat_aanwezig"] = andere_mat_aanwezig
+            if andere_mat_aanwezig == "Ja":
+                concurrent_opties = ["CWS", "ELIS", "Quality Service", "Vendrig", "Mewa", "Anders namelijk:"]
+                gekozen_concurrent = st.selectbox("Van welke concurrent?", concurrent_opties, key=f"andere_mat_concurrent_select_{soort}")
+                if gekozen_concurrent == "Anders namelijk:":
+                    andere_concurrent = st.text_input("Welke andere concurrent?", key=f"andere_mat_concurrent_anders_{soort}")
+                    data["andere_mat_concurrent"] = andere_concurrent
+                else:
+                    data["andere_mat_concurrent"] = gekozen_concurrent
             else:
-                st.markdown("### 1.1 Zien we andere matten liggen?")
-                andere_mat_koop = st.number_input("Aantal andere matten (koop)", min_value=0, value=0, step=1, key="andere_mat_koop")
-                andere_mat_huur = st.number_input("Aantal andere matten (huur/concurrent)", min_value=0, value=0, step=1, key="andere_mat_huur")
-                data["andere_mat_koop"] = andere_mat_koop
-                data["andere_mat_huur"] = andere_mat_huur
+                data["andere_mat_concurrent"] = ""
+            # Aantal andere matten (koop) blijft apart
+            andere_mat_koop = st.number_input("Aantal andere matten (koop)", min_value=0, value=0, step=1, key=f"andere_mat_koop_{soort}")
+            data["andere_mat_koop"] = andere_mat_koop
 
-                st.markdown("### 1.2 Zijn er matten uit het abonnement verwijderd (stopzetting)?")
-                gestopte_matten = st.checkbox("Zijn er matten uit het abonnement verwijderd (stopzetting)?")
-                data["gestopte_matten"] = gestopte_matten
-                if gestopte_matten:
-                    data["gestopte_matten_info"] = st.text_area("Welke matten zijn gestopt? (Vul artikel, stopdatum, ligplaats, is die weg, afbeelding, etc. in)")
-                    data["actie_ophaleen_mat"] = st.radio("Is de mat daadwerkelijk weg?", ["Ja", "Nee", "Weet niet"]) 
-                    if data["actie_ophaleen_mat"] == "Nee":
-                        data["actie_binnendienst_mat"] = st.text_area("Actie: Vraag aan binnendienst of SM of de mat toch echt niet gebruikt wordt. Anders ophaalopdracht aanmaken.")
+        if soort == "Wissers":
+            # Vraag 2.1 bovenaan bij wissers
+            st.markdown("### 2.1 Zien we wissers van concurrenten staan?")
+            andere_zaken = st.text_area("Zie je andere schoonmaakmiddelen staan? (Bezems, wissers van andere leveranciers, etc.)", key=f"andere_zaken_{soort}")
+            data["andere_zaken"] = andere_zaken
 
-                st.markdown("### 1.3 Ligplaatsen en aantallen")
-                st.info("Controleer of de ligplaatsen goed zijn ingevuld. Als er 'Algemeen/Algemeen' staat, komt er automatisch een to-do voor de SM.")
-                matten_lijst = st.session_state.get('standaard_matten_lijst', []) + st.session_state.get('logomatten_lijst', [])
-                for i, mat in enumerate(matten_lijst):
-                    afdeling = mat.get('afdeling', '')
-                    ligplaats = mat.get('ligplaats', '')
-                    if afdeling == 'Algemeen' and ligplaats == 'Algemeen':
-                        st.warning(f"Let op: Mat {i+1} heeft locatie 'Algemeen/Algemeen'. Actie voor SM om ligplaatsen goed aan te maken in TMS.")
-                    st.markdown(f"**Mat {i+1}:** {mat.get('mat_type', '')} | Afdeling: {afdeling} | Ligplaats: {ligplaats} | Aantal: {mat.get('aantal', 1)} | Bezoekritme: {mat.get('bezoekritme', '-')}")
-                    aanwezig = st.checkbox(f"Is deze mat aanwezig?", value=mat.get('aanwezig', True), key=f"mat_aanwezig_{i}")
-                    vuilgraad = st.selectbox(f"Vuilgraad mat {i+1}", ["Schoon", "Licht vervuild", "Sterk vervuild"], index=["Schoon", "Licht vervuild", "Sterk vervuild"].index(mat.get('vuilgraad_label', 'Licht vervuild')), key=f"mat_vuilgraad_{i}")
-                    mat['aanwezig'] = aanwezig
-                    mat['vuilgraad_label'] = vuilgraad
-                    mat['schoon_onbeschadigd'] = st.checkbox(f"Schoon/onbeschadigd?", value=mat.get('schoon_onbeschadigd', True), key=f"mat_schoon_{i}")
-                    # Extra check: afwijking aantal
-                    # (Hier kun je logica toevoegen voor te veel/te weinig matten tov abonnement)
+            # Verzamel alle afdelingen en ligplaatsen voor wissers
+            wissers_afdelingen = set()
+            wissers_ligplaatsen = set()
+            for abo in abos:
+                if 'afdeling' in abo and abo['afdeling']:
+                    wissers_afdelingen.add(abo['afdeling'])
+                if 'ligplaats' in abo and abo['ligplaats']:
+                    wissers_ligplaatsen.add(abo['ligplaats'])
+                for loc in abo.get('ligplaatsen', []):
+                    if 'afdeling' in loc and loc['afdeling']:
+                        wissers_afdelingen.add(loc['afdeling'])
+                    if 'ligplaats' in loc and loc['ligplaats']:
+                        wissers_ligplaatsen.add(loc['ligplaats'])
+            afdelingen = sorted([a for a in wissers_afdelingen if a])
+            ligplaatsen = sorted([l for l in wissers_ligplaatsen if l])
 
-                data['matten_lijst'] = matten_lijst
-                data['matten_opmerking'] = st.text_area("Opmerkingen over matten/ligplaatsen (optioneel)")
+            # Wissers tabel (zelfde opzet als matten)
+            st.markdown("### Wissers overzicht")
+            wissers_data = []
+            for wisser in wissers_abos:
+                wissers_data.append({
+                    "Type wisser": wisser.get("productomschrijving", ""),
+                    "Afdeling": wisser.get("afdeling", "Algemeen"),
+                    "Ligplaats": wisser.get("ligplaats", "Algemeen"),
+                    "Aantal": wisser.get("aantal", 0),
+                    "Aanwezig": False,
+                    "Schoon/onbeschadigd": True,
+                    "Opmerking": ""
+                })
+            if wissers_data:
+                wissers_df = pd.DataFrame(wissers_data)
+                column_order = ["Type wisser", "Afdeling", "Ligplaats", "Aantal", "Aanwezig", "Schoon/onbeschadigd", "Opmerking"]
+                columns_to_use = [col for col in column_order if col in wissers_df.columns]
+                other_columns = [col for col in wissers_df.columns if col not in column_order]
+                final_column_order = columns_to_use + other_columns
+                wissers_df = wissers_df[final_column_order]
+                edited_wissers_df = st.data_editor(
+                    wissers_df,
+                    column_config={
+                        "Type wisser": st.column_config.TextColumn("Type wisser", disabled=True),
+                        "Afdeling": st.column_config.SelectboxColumn("Afdeling", options=afdelingen, required=True),
+                        "Ligplaats": st.column_config.SelectboxColumn("Ligplaats", options=ligplaatsen, required=True),
+                        "Aantal": st.column_config.NumberColumn("Aantal", min_value=0),
+                        "Aanwezig": st.column_config.CheckboxColumn("Aanwezig"),
+                        "Schoon/onbeschadigd": st.column_config.CheckboxColumn("Schoon/onbeschadigd"),
+                        "Opmerking": st.column_config.TextColumn("Opmerking")
+                    },
+                    hide_index=True,
+                    num_rows="dynamic",
+                    key=f"wissers_tabel_{soort}"
+                )
+                data["wissers_tabel"] = edited_wissers_df.to_dict("records")
 
-                st.markdown("### 1.4 Logomatten extra check")
-                logomatten = st.session_state.get('logomatten_lijst', [])
-                for i, mat in enumerate(logomatten):
-                    st.markdown(f"**Logomat {i+1}:** {mat.get('mat_type', '')} | Barcode: {mat.get('barcode', '-')}")
-                    foto_barcode = st.file_uploader(f"Upload foto van barcode voor logomat {i+1}", type=["jpg", "jpeg", "png"], key=f"foto_barcode_{i}")
-                    representatief = st.slider(f"Hoe representatief is deze mat nog voor de klant? (1=slecht, 10=uitstekend)", min_value=1, max_value=10, value=7, key=f"mat_score_{i}")
-                    mat['representatief_score'] = representatief
-                    mat['logo_ok'] = st.checkbox(f"Klopt het logo?", value=True, key=f"logo_ok_{i}")
-                    mat['scheuren'] = st.checkbox(f"Zitten er scheuren in?", value=False, key=f"scheuren_{i}")
-                    # Logica: ouder dan 4 jaar én score lager dan 5 = vervangen
-                    leeftijd = extract_mat_leeftijd(mat.get('barcode', ''))
-                    mat['leeftijd'] = leeftijd
-                    if 'jaar' in leeftijd:
-                        try:
-                            jaren = int(leeftijd.split(' ')[0])
-                            if jaren >= 4 and representatief < 5:
-                                st.warning(f"Advies: deze logomat is ouder dan 4 jaar en heeft een lage score. Vervangen!")
-                        except:
-                            pass
+            # Toebehoren tabel
+            st.markdown("### Wissers hardware/toebehoren")
+            accessoires = ["Standaard steel", "Dubbele wissersteel", "Telescoopsteel", "Bak", "Muursteun"]
+            accessoires_data = []
+            for acc in accessoires:
+                accessoires_data.append({
+                    "Type accessoire": acc,
+                    "Aantal te vervangen": 0,
+                    "Opmerking": ""
+                })
+            accessoires_df = pd.DataFrame(accessoires_data)
+            edited_accessoires_df = st.data_editor(
+                accessoires_df,
+                column_config={
+                    "Type accessoire": st.column_config.TextColumn("Type accessoire", disabled=True),
+                    "Aantal te vervangen": st.column_config.NumberColumn("Aantal te vervangen", min_value=0),
+                    "Opmerking": st.column_config.TextColumn("Opmerking")
+                },
+                hide_index=True,
+                num_rows="fixed",
+                key=f"toebehoren_tabel_{soort}"
+            )
+            data["toebehoren_tabel"] = edited_accessoires_df.to_dict("records")
 
-                data['logomatten'] = logomatten
-                data['logomatten_opmerking'] = st.text_area("Opmerkingen over logomatten (optioneel)")
+            return data
+        else:
+            # Begin met 1.2 omdat 1.1 al eerder is behandeld
+            st.markdown("### 1.2 Zijn er matten uit het abonnement verwijderd (stopzetting)?")
+            gestopte_matten = st.checkbox("Zijn er matten uit het abonnement verwijderd (stopzetting?)", key=f"gestopte_matten_{soort}")
+            data["gestopte_matten"] = gestopte_matten
+            if gestopte_matten:
+                data["gestopte_matten_info"] = st.text_area("Welke matten zijn gestopt? (Vul artikel, stopdatum, ligplaats, is die weg, afbeelding, etc. in)", key=f"gestopte_matten_info_{soort}")
+                data["actie_ophaleen_mat"] = st.radio("Is de mat daadwerkelijk weg?", ["Ja", "Nee", "Weet niet"], key=f"actie_ophaleen_mat_{soort}")
+                if data["actie_ophaleen_mat"] == "Nee":
+                    data["actie_binnendienst_mat"] = st.text_area("Actie: Vraag aan binnendienst of SM of de mat toch echt niet gebruikt wordt. Anders ophaalopdracht aanmaken.", key=f"actie_binnendienst_mat_{soort}")
 
-                st.markdown("### 1.5 Extra locaties/aantallen")
-                extra_locaties = st.text_area("Zijn er nog matten op andere locaties? Geef aan waar, wat en het totaal. Is het een uitbreiding of vervanging?")
-                data['extra_locaties'] = extra_locaties
+            # Voor de data verzameling 
+            matten_lijst = st.session_state.get('standaard_matten_lijst', []) + st.session_state.get('logomatten_lijst', [])
+            # Controleer op algemene ligplaatsen en voeg toe aan data
+            for i, mat in enumerate(matten_lijst):
+                afdeling = mat.get('afdeling', '')
+                ligplaats = mat.get('ligplaats', '')
+                if afdeling == 'Algemeen' and ligplaats == 'Algemeen':
+                    add_todo_action(f"Ligplaats controleren en aanpassen in TMS voor mat {i+1}.")
+            
+            data['matten_lijst'] = matten_lijst
+            data['matten_opmerking'] = st.text_area("Opmerkingen over matten/ligplaatsen (optioneel)", key=f"matten_opmerking_1_{soort}")
 
-                st.markdown("### 1.6 Advies en acties")
-                advies = st.text_area("Advies voor SM (to-do), bijvoorbeeld bij afwijkend aantal, vervuiling, of ligplaatsen.")
-                data['advies'] = advies
+            # --- Tabel met standaardmatten en logomatten ---
+            st.markdown("---")
+            st.subheader("Overzicht en bewerking matten uit abonnement")
+            
+            # Verzamel alle afdelingen en ligplaatsen
+            abonnement_afdelingen = set()
+            abonnement_ligplaatsen = set()
+            for abo in abos:
+                if 'afdeling' in abo and abo['afdeling']:
+                    abonnement_afdelingen.add(abo['afdeling'])
+                if 'ligplaats' in abo and abo['ligplaats']:
+                    abonnement_ligplaatsen.add(abo['ligplaats'])
+                for loc in abo.get('ligplaatsen', []):
+                    if 'afdeling' in loc and loc['afdeling']:
+                        abonnement_afdelingen.add(loc['afdeling'])
+                    if 'ligplaats' in loc and loc['ligplaats']:
+                        abonnement_ligplaatsen.add(loc['ligplaats'])
+            
+            afdelingen = sorted([a for a in abonnement_afdelingen if a])
+            ligplaatsen = sorted([l for l in abonnement_ligplaatsen if l])
 
-                # Automatische to-do's voor matten
-                if soort == "Matten":
-                    if data.get('gestopte_matten'):
-                        add_todo_action("Controleer gestopte matten en voer ophaalopdracht uit.")
-                    matten_lijst = data.get('matten_lijst', [])
-                    for i, mat in enumerate(matten_lijst):
-                        if mat.get('afdeling', '') == 'Algemeen' and mat.get('ligplaats', '') == 'Algemeen':
-                            add_todo_action(f"Ligplaats controleren en aanpassen in TMS voor mat {i+1}.")
-                    advies = data.get('advies', '')
-                    if advies and advies.strip():
-                        add_todo_action(f"Advies/actie: {advies.strip()}")
-
-                # --- Tabel met standaardmatten en logomatten ---
-                st.markdown("---")
-                st.subheader("Overzicht en bewerking matten uit abonnement")
-                
-                # Verzamel alle afdelingen en ligplaatsen
-                abonnement_afdelingen = set()
-                abonnement_ligplaatsen = set()
-                for abo in abos:
-                    if 'afdeling' in abo and abo['afdeling']:
-                        abonnement_afdelingen.add(abo['afdeling'])
-                    if 'ligplaats' in abo and abo['ligplaats']:
-                        abonnement_ligplaatsen.add(abo['ligplaats'])
-                    for loc in abo.get('ligplaatsen', []):
-                        if 'afdeling' in loc and loc['afdeling']:
-                            abonnement_afdelingen.add(loc['afdeling'])
-                        if 'ligplaats' in loc and loc['ligplaats']:
-                            abonnement_ligplaatsen.add(loc['ligplaats'])
-                
-                afdelingen = sorted([a for a in abonnement_afdelingen if a])
-                ligplaatsen = sorted([l for l in abonnement_ligplaatsen if l])
-
-                # Maak tabs voor standaard en logo matten
+            # Maak tabs voor standaard en logo matten
+            if st.session_state.logomatten_lijst:
                 standaard_tab, logo_tab = st.tabs(["Standaard matten", "Logomatten"])
-                
-                with standaard_tab:
-                    st.markdown("#### Standaard matten")
-                    mat_data = []
-                    for i, mat in enumerate(st.session_state.standaard_matten_lijst):
-                        mat_data.append({
-                            "Productomschrijving": mat["mat_type"],
-                            "Afdeling": mat["afdeling"],
-                            "Ligplaats": mat["ligplaats"],
-                            "Aanwezig": mat["aanwezig"],
-                            "Schoon/onbeschadigd": mat["schoon_onbeschadigd"],
-                            "Vuilgraad": mat.get("vuilgraad_label", "Licht vervuild")
-                        })
-                    if mat_data:
-                        df = pd.DataFrame(mat_data)
-                        column_order = ["Afdeling", "Ligplaats", "Productomschrijving", "Vuilgraad", "Aanwezig", "Schoon/onbeschadigd"]
-                        columns_to_use = [col for col in column_order if col in df.columns]
-                        other_columns = [col for col in df.columns if col not in column_order]
-                        final_column_order = columns_to_use + other_columns
-                        df = df[final_column_order]
-                        edited_df = st.data_editor(
-                            df,
-                            column_config={
-                                "Productomschrijving": st.column_config.TextColumn("Productomschrijving", disabled=True),
-                                "Afdeling": st.column_config.SelectboxColumn("Afdeling", options=afdelingen, required=True),
-                                "Ligplaats": st.column_config.SelectboxColumn("Ligplaats", options=ligplaatsen, required=True),
-                                "Aanwezig": st.column_config.CheckboxColumn("Aanwezig"),
-                                "Schoon/onbeschadigd": st.column_config.CheckboxColumn("Schoon/onbeschadigd"),
-                                "Vuilgraad": st.column_config.SelectboxColumn("Vuilgraad", options=["Schoon", "Licht vervuild", "Sterk vervuild"], required=True)
-                            },
-                            hide_index=True,
-                            num_rows="dynamic",
-                            key="standaard_matten_editor"
-                        )
-                        if edited_df is not None:
-                            for i, row in edited_df.iterrows():
-                                mat = st.session_state.standaard_matten_lijst[i]
-                                mat["afdeling"] = row["Afdeling"]
-                                mat["ligplaats"] = row["Ligplaats"]
-                                mat["aanwezig"] = bool(row["Aanwezig"])
-                                mat["schoon_onbeschadigd"] = bool(row["Schoon/onbeschadigd"])
-                                mat["vuilgraad_label"] = row["Vuilgraad"]
-                                if row["Vuilgraad"] == "Schoon":
-                                    mat["vuilgraad"] = 0
-                                elif row["Vuilgraad"] == "Licht vervuild":
-                                    mat["vuilgraad"] = 1
-                                else:
-                                    mat["vuilgraad"] = 2
+            else:
+                standaard_tab, = st.tabs(["Standaard matten"])
 
+            with standaard_tab:
+                st.markdown("#### Standaard matten")
+                mat_data = []
+                for i, mat in enumerate(st.session_state.standaard_matten_lijst):
+                    mat_data.append({
+                        "Productomschrijving": mat["mat_type"],
+                        "Afdeling": mat["afdeling"],
+                        "Ligplaats": mat["ligplaats"],
+                        "Aantal": mat["aantal"],
+                        "Aanwezig": False,
+                        "Schoon/onbeschadigd": mat["schoon_onbeschadigd"],
+                        "Vuilgraad": ""
+                    })
+                if mat_data:
+                    df = pd.DataFrame(mat_data)
+                    column_order = ["Afdeling", "Ligplaats", "Productomschrijving", "Aantal", "Vuilgraad", "Aanwezig", "Schoon/onbeschadigd"]
+                    columns_to_use = [col for col in column_order if col in df.columns]
+                    other_columns = [col for col in df.columns if col not in column_order]
+                    final_column_order = columns_to_use + other_columns
+                    df = df[final_column_order]
+                    edited_df = st.data_editor(
+                        df,
+                        column_config={
+                            "Productomschrijving": st.column_config.TextColumn("Productomschrijving", disabled=True),
+                            "Afdeling": st.column_config.SelectboxColumn("Afdeling", options=afdelingen, required=True),
+                            "Ligplaats": st.column_config.SelectboxColumn("Ligplaats", options=ligplaatsen, required=True),
+                            "Aantal": st.column_config.NumberColumn("Aantal", min_value=0),
+                            "Aanwezig": st.column_config.CheckboxColumn("Aanwezig"),
+                            "Schoon/onbeschadigd": st.column_config.CheckboxColumn("Schoon/onbeschadigd"),
+                            "Vuilgraad": st.column_config.SelectboxColumn("Vuilgraad", options=["", "Schoon", "Licht vervuild", "Sterk vervuild"], required=True)
+                        },
+                        hide_index=True,
+                        num_rows="dynamic",
+                        key=f"standaard_matten_editor_{soort}"
+                    )
+                    if edited_df is not None:
+                        for i, row in edited_df.iterrows():
+                            mat = st.session_state.standaard_matten_lijst[i]
+                            mat["afdeling"] = row["Afdeling"]
+                            mat["ligplaats"] = row["Ligplaats"]
+                            mat["aantal"] = row["Aantal"]
+                            mat["aanwezig"] = bool(row["Aanwezig"])
+                            mat["schoon_onbeschadigd"] = bool(row["Schoon/onbeschadigd"])
+                            mat["vuilgraad_label"] = row["Vuilgraad"]
+                            if row["Vuilgraad"] == "Schoon":
+                                mat["vuilgraad"] = 0
+                            elif row["Vuilgraad"] == "Licht vervuild":
+                                mat["vuilgraad"] = 1
+                            else:
+                                mat["vuilgraad"] = 2
+
+            if st.session_state.logomatten_lijst:
                 with logo_tab:
                     st.markdown("#### Logomatten")
                     mat_data = []
@@ -624,13 +770,14 @@ with form_tab:
                             "Ligplaats": mat["ligplaats"],
                             "Barcode": mat.get("barcode", ""),
                             "Leeftijd": extract_mat_leeftijd(mat.get("barcode", "")) if mat.get("barcode") else "-",
-                            "Aanwezig": mat["aanwezig"],
+                            "Aantal": mat["aantal"],
+                            "Aanwezig": False,
                             "Schoon/onbeschadigd": mat["schoon_onbeschadigd"],
                             "Vuilgraad": mat.get("vuilgraad_label", "Licht vervuild")
                         })
                     if mat_data:
                         df = pd.DataFrame(mat_data)
-                        column_order = ["Afdeling", "Ligplaats", "Productomschrijving", "Vuilgraad", "Barcode", "Leeftijd", "Aanwezig", "Schoon/onbeschadigd"]
+                        column_order = ["Afdeling", "Ligplaats", "Productomschrijving", "Vuilgraad", "Barcode", "Leeftijd", "Aantal", "Aanwezig", "Schoon/onbeschadigd"]
                         columns_to_use = [col for col in column_order if col in df.columns]
                         other_columns = [col for col in df.columns if col not in column_order]
                         final_column_order = columns_to_use + other_columns
@@ -643,13 +790,14 @@ with form_tab:
                                 "Ligplaats": st.column_config.SelectboxColumn("Ligplaats", options=ligplaatsen, required=True),
                                 "Barcode": st.column_config.TextColumn("Barcode"),
                                 "Leeftijd": st.column_config.TextColumn("Leeftijd", disabled=True),
+                                "Aantal": st.column_config.NumberColumn("Aantal", min_value=0),
                                 "Aanwezig": st.column_config.CheckboxColumn("Aanwezig"),
                                 "Schoon/onbeschadigd": st.column_config.CheckboxColumn("Schoon/onbeschadigd"),
                                 "Vuilgraad": st.column_config.SelectboxColumn("Vuilgraad", options=["Schoon", "Licht vervuild", "Sterk vervuild"], required=True)
                             },
                             hide_index=True,
                             num_rows="dynamic",
-                            key="logomatten_editor"
+                            key=f"logomatten_editor_{soort}"
                         )
                         if edited_df is not None:
                             for i, row in edited_df.iterrows():
@@ -657,6 +805,7 @@ with form_tab:
                                 mat["afdeling"] = row["Afdeling"]
                                 mat["ligplaats"] = row["Ligplaats"]
                                 mat["barcode"] = row["Barcode"]
+                                mat["aantal"] = row["Aantal"]
                                 mat["aanwezig"] = bool(row["Aanwezig"])
                                 mat["schoon_onbeschadigd"] = bool(row["Schoon/onbeschadigd"])
                                 mat["vuilgraad_label"] = row["Vuilgraad"]
@@ -667,228 +816,144 @@ with form_tab:
                                 else:
                                     mat["vuilgraad"] = 2
 
-                data['fotos'] = st.file_uploader("Upload foto's van matten en locaties", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key=fotos_key)
-                if data['fotos']:
-                    st.success(f"{len(data['fotos'])} foto's geüpload")
-                return data
+            data['fotos'] = st.file_uploader("Upload foto's van matten en locaties", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key=f"fotos_{soort}")
+            if data['fotos']:
+                st.success(f"{len(data['fotos'])} foto's geüpload")
+            return data
 
-        # --- Gebruik inspectieformulier voor matten en wissers ---
+    # Toon de vragenlijst als er geen laatste bezoek is of als het laatste bezoek meer dan 6 maanden geleden was
+    if laatste_bezoek is None:
+        # Als er nog geen laatste bezoek is, toon de vragenlijst
         matten_data = None
         wissers_data = None
         if matten_abos:
             matten_data = inspectieformulier("Matten", matten_abos, "matten_fotos")
         if wissers_abos:
             wissers_data = inspectieformulier("Wissers", wissers_abos, "wissers_fotos")
+    elif laatste_bezoek > inspectie_datum:
+        st.warning("De datum van het laatste bezoek ligt in de toekomst!")
+    else:
+        maanden_verschil = (inspectie_datum.year - laatste_bezoek.year) * 12 + (inspectie_datum.month - laatste_bezoek.month)
+        if maanden_verschil < 6:
+            st.success("Geen inspectie nodig, laatste bezoek was minder dan 6 maanden geleden.")
+        else:
+            # Toon de vragenlijst als het laatste bezoek meer dan 6 maanden geleden was
+            matten_data = None
+            wissers_data = None
+            if matten_abos:
+                matten_data = inspectieformulier("Matten", matten_abos, "matten_fotos")
+            if wissers_abos:
+                wissers_data = inspectieformulier("Wissers", wissers_abos, "wissers_fotos")
 
-        if st.button("Genereer Rapport"):
-            st.session_state.matten_data = matten_data
-            st.session_state.wissers_data = wissers_data
-            st.session_state.inspecteur_naam = inspecteur_naam
-            st.session_state.inspectie_datum = inspectie_datum
-            st.session_state.rapport_gegenereerd = True
+    if st.button("Genereer Rapport"):
+        st.session_state.matten_data = matten_data
+        st.session_state.wissers_data = wissers_data
+        st.session_state.inspecteur_naam = inspecteur_naam
+        st.session_state.inspectie_datum = inspectie_datum
+        st.session_state.inspectie_tijd = inspectie_tijd
+        st.session_state.rapport_gegenereerd = True
+        genereer_todo_list()
 
-    with todo_tab:
-        st.header("To-do lijst voor servicemedewerkers")
-        if 'todo_list' not in st.session_state:
-            st.session_state['todo_list'] = []
-        # Toevoegen
-        new_todo = st.text_input("Nieuwe to-do toevoegen", key="new_todo")
-        if st.button("Toevoegen", key="add_todo_btn"):
-            if new_todo.strip():
-                st.session_state['todo_list'].append({"text": new_todo.strip(), "done": False})
-                st.session_state['new_todo'] = ""
-        # Lijst tonen en interactief maken
-        remove_indices = []
-        for idx, todo in enumerate(st.session_state['todo_list']):
-            cols = st.columns([0.08, 0.8, 0.12])
-            checked = cols[0].checkbox("", value=todo["done"], key=f"todo_done_{idx}")
-            text = cols[1].text_input("", value=todo["text"], key=f"todo_text_{idx}")
-            remove = cols[2].button("🗑️", key=f"remove_todo_{idx}")
-            st.session_state['todo_list'][idx]["done"] = checked
-            st.session_state['todo_list'][idx]["text"] = text
-            if remove:
-                remove_indices.append(idx)
-        # Verwijderen na de loop (anders indexfout)
-        for idx in sorted(remove_indices, reverse=True):
-            st.session_state['todo_list'].pop(idx)
-        if not st.session_state['todo_list']:
-            st.info("Nog geen to-do's toegevoegd.")
+    if st.button("Genereer To-do's op basis van huidige data"):
+        st.session_state['todo_list'] = []  # Leegmaken, zodat alleen actuele to-do's blijven
+        genereer_todo_list()
 
-    with report_tab:
-        if st.session_state.get('rapport_gegenereerd', False):
-            matten_data = st.session_state.get('matten_data', {})
-            wissers_data = st.session_state.get('wissers_data', {})
-            inspecteur_naam = st.session_state.get('inspecteur_naam', '')
-            inspectie_datum = st.session_state.get('inspectie_datum', date.today())
+    if st.button("Sla alles op voor deze klant"):
+        # Voor matten
+        if matten_data:
+            vergelijk_en_log_wijzigingen(
+                oud_data=st.session_state.get('standaard_matten_lijst', []) + st.session_state.get('logomatten_lijst', []),
+                nieuw_data=matten_data.get('matten_lijst', []),
+                relatienummer=relatienummer,
+                klantnaam=klantnaam,
+                soort_wijziging='mat',
+                gewijzigd_door=inspecteur_naam
+            )
+        
+        # Voor wissers
+        if wissers_data:
+            vergelijk_en_log_wijzigingen(
+                oud_data=st.session_state.get('wissers_tabel', []),
+                nieuw_data=wissers_data.get('wissers_tabel', []),
+                relatienummer=relatienummer,
+                klantnaam=klantnaam,
+                soort_wijziging='wisser',
+                gewijzigd_door=inspecteur_naam
+            )
+        
+        # Voor toebehoren
+        if wissers_data:
+            vergelijk_en_log_wijzigingen(
+                oud_data=st.session_state.get('toebehoren_tabel', []),
+                nieuw_data=wissers_data.get('toebehoren_tabel', []),
+                relatienummer=relatienummer,
+                klantnaam=klantnaam,
+                soort_wijziging='toebehoren',
+                gewijzigd_door=inspecteur_naam
+            )
+        
+        st.success("Alle wijzigingen zijn gelogd!")
+
+with todo_tab:
+    st.header("To-do lijst voor servicemedewerkers")
+    if 'todo_list' not in st.session_state:
+        st.session_state['todo_list'] = []
+    # Lijst tonen en interactief maken
+    remove_indices = []
+    for idx, todo in enumerate(st.session_state['todo_list']):
+        cols = st.columns([0.08, 0.8, 0.12])
+        checked = cols[0].checkbox("", value=todo["done"], key=f"todo_done_{idx}")
+        text = cols[1].text_input("", value=todo["text"], key=f"todo_text_{idx}")
+        remove = cols[2].button("🗑️", key=f"remove_todo_{idx}")
+        st.session_state['todo_list'][idx]["done"] = checked
+        st.session_state['todo_list'][idx]["text"] = text
+        if remove:
+            remove_indices.append(idx)
+    # Verwijderen na de loop (anders indexfout)
+    for idx in sorted(remove_indices, reverse=True):
+        st.session_state['todo_list'].pop(idx)
+    if not st.session_state['todo_list']:
+        st.info("Nog geen to-do's toegevoegd.")
+
+def export_wijzigingen_log():
+    """
+    Exporteer de wijzigingen log als CSV
+    """
+    try:
+        # Haal alle nieuwe wijzigingen op
+        response = supabase.table("service_wijzigingen_log")\
+            .select("*")\
+            .eq("status", "nieuw")\
+            .execute()
+        
+        if response.data:
+            df = pd.DataFrame(response.data)
             
-            # Basis rapport
-            klant_rapport = f"""
-# Servicerapport Lavans
+            # Genereer CSV
+            csv = df.to_csv(index=False)
+            
+            # Maak downloadbare link
+            st.download_button(
+                label="Download wijzigingen log (CSV)",
+                data=csv,
+                file_name=f"wijzigingen_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv"
+            )
+            
+            # Update status naar 'verwerkt'
+            for id in df['id']:
+                supabase.table("service_wijzigingen_log")\
+                    .update({"status": "verwerkt"})\
+                    .eq("id", id)\
+                    .execute()
+        else:
+            st.info("Geen nieuwe wijzigingen om te exporteren.")
+            
+    except Exception as e:
+        st.error(f"Fout bij exporteren van wijzigingen: {e}")
 
-**Klant:** {klantnaam}  
-**Relatienummer:** {relatienummer}  
-**Datum bezoek:** {inspectie_datum.strftime('%d-%m-%Y')}  
-**Inspecteur:** {inspecteur_naam}  
-**Bedrijf:** Lavans
-
-## Contactpersoon
-{contact_naam}
-{contact_email if contact_email else ''}
-
-## Matten Inspectie
-"""
-            # Voeg matten data toe
-            if matten_data:
-                if matten_data.get('andere_mat_koop', 0) > 0 or matten_data.get('andere_mat_huur', 0) > 0:
-                    klant_rapport += f"\nAndere matten aanwezig:\n"
-                    if matten_data.get('andere_mat_koop', 0) > 0:
-                        klant_rapport += f"- {matten_data['andere_mat_koop']} koopmatten\n"
-                    if matten_data.get('andere_mat_huur', 0) > 0:
-                        klant_rapport += f"- {matten_data['andere_mat_huur']} huur/concurrent matten\n"
-                
-                if matten_data.get('gestopte_matten'):
-                    klant_rapport += f"\nGestopte matten:\n{matten_data.get('gestopte_matten_info', '')}\n"
-                
-                if matten_data.get('matten_opmerking'):
-                    klant_rapport += f"\nOpmerkingen matten:\n{matten_data['matten_opmerking']}\n"
-                
-                if matten_data.get('logomatten_opmerking'):
-                    klant_rapport += f"\nOpmerkingen logomatten:\n{matten_data['logomatten_opmerking']}\n"
-                
-                if matten_data.get('extra_locaties'):
-                    klant_rapport += f"\nExtra locaties:\n{matten_data['extra_locaties']}\n"
-                
-                if matten_data.get('advies'):
-                    klant_rapport += f"\nAdvies:\n{matten_data['advies']}\n"
-
-            klant_rapport += "\n## Wissers Inspectie\n"
-            # Voeg wissers data toe
-            if wissers_data:
-                if wissers_data.get('andere_zaken'):
-                    klant_rapport += f"\nAndere schoonmaakmiddelen:\n{wissers_data['andere_zaken']}\n"
-                
-                if wissers_data.get('gestopte_wissers'):
-                    klant_rapport += f"\nGestopte wissers:\n{wissers_data.get('gestopte_wissers_info', '')}\n"
-                
-                if wissers_data.get('wissers_telling_opmerking'):
-                    klant_rapport += f"\nOpmerking telling wissers:\n{wissers_data['wissers_telling_opmerking']}\n"
-                
-                if wissers_data.get('accessoires_opmerking'):
-                    klant_rapport += f"\nOpmerking accessoires:\n{wissers_data['accessoires_opmerking']}\n"
-                
-                if wissers_data.get('verbruik_opmerking'):
-                    klant_rapport += f"\nOpmerking verbruik:\n{wissers_data['verbruik_opmerking']}\n"
-                
-                if wissers_data.get('ligplaats_opmerking'):
-                    klant_rapport += f"\nOpmerking ligplaats:\n{wissers_data['ligplaats_opmerking']}\n"
-
-            # AI-rapportage
-            if os.getenv("OPENAI_API_KEY"):
-                client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-                ai_prompt = (
-                    "Je bent een controlerende servicemedewerker van Lavans. "
-                    "Schrijf een klantvriendelijk, duidelijk en positief servicerapport in het Nederlands, gericht aan de klant van Lavans, "
-                    "op basis van deze inspectiegegevens:\n\n"
-                    f"{klant_rapport}\n\n"
-                    "Het rapport moet professioneel, helder en positief geformuleerd zijn, en geschreven zijn vanuit Lavans richting de klant. "
-                    "Vermijd interne opmerkingen of technische details die niet relevant zijn voor de klant.\n\n"
-                    f"Onderteken het rapport met de volledige naam van de inspecteur: '{inspecteur_naam}', en niet met een willekeurige naam of initialen."
-                )
-                try:
-                    response = client.chat.completions.create(
-                        model="gpt-3.5-turbo",
-                        messages=[{"role": "user", "content": ai_prompt}],
-                        temperature=0.5,
-                    )
-                    ai_rapport = response.choices[0].message.content.strip()
-                    if inspecteur_naam and inspecteur_naam not in ai_rapport:
-                        if "Met vriendelijke groet," in ai_rapport:
-                            ai_rapport = ai_rapport.replace("Met vriendelijke groet,", f"Met vriendelijke groet,\n\n{inspecteur_naam}")
-                        else:
-                            ai_rapport += f"\n\nMet vriendelijke groet,\n\n{inspecteur_naam}\nInspecteur bij Lavans"
-                    
-                    st.markdown("### AI-klantrapport")
-                    logo_path = "Logo-Lavans-png.png"
-                    if os.path.exists(logo_path):
-                        logo_b64 = get_image_base64(logo_path)
-                        logo_html = f'<img src="data:image/png;base64,{logo_b64}" style="max-width: 200px; margin-bottom: 20px;">'
-                        st.markdown(logo_html, unsafe_allow_html=True)
-                    st.markdown(ai_rapport)
-                    
-                    # Download opties
-                    try:
-                        pdf_ai_rapport = markdown_to_pdf(ai_rapport, f"AI-servicerapport {klantnaam}")
-                        st.markdown(
-                            get_download_link(
-                                pdf_ai_rapport,
-                                f"ai_klantrapport_{klantnaam}_{date.today().strftime('%Y%m%d')}.pdf",
-                                "📄 AI-klantrapport Downloaden (PDF)",
-                                is_pdf=True
-                            ),
-                            unsafe_allow_html=True
-                        )
-                    except Exception as e:
-                        st.warning(f"PDF generatie mislukt: {e}. Probeer de HTML versie.")
-                        ai_rapport_html = markdown_to_html(ai_rapport, f"AI-servicerapport {klantnaam}")
-                        st.markdown(
-                            get_download_link(
-                                ai_rapport_html,
-                                f"ai_klantrapport_{klantnaam}_{date.today().strftime('%Y%m%d')}.html",
-                                "📄 AI-klantrapport Downloaden (HTML)"
-                            ),
-                            unsafe_allow_html=True
-                        )
-
-                    # Voeg na het genereren van het AI-rapport in het rapportage-tabblad toe:
-                    from datetime import datetime
-
-                    # ... na het genereren van ai_rapport en pdf_ai_rapport ...
-                    try:
-                        rapport_data = {
-                            "relatienummer": relatienummer,
-                            "klantnaam": klantnaam,
-                            "inspecteur": inspecteur_naam,
-                            "datum": inspectie_datum,
-                            "rapport_tekst": ai_rapport,
-                            "pdf_base64": base64.b64encode(pdf_ai_rapport).decode() if 'pdf_ai_rapport' in locals() and pdf_ai_rapport else None,
-                            "aangemaakt_op": datetime.now().isoformat()
-                        }
-                        supabase.table("service_rapporten").insert(rapport_data).execute()
-                        st.success("Rapport succesvol opgeslagen in de database.")
-                    except Exception as e:
-                        st.warning(f"Opslaan in database mislukt: {e}")
-                except Exception as e:
-                    st.warning(f"AI-rapportage mislukt: {e}")
-            else:
-                st.info("AI-rapportage niet beschikbaar (geen OpenAI API key gevonden).")
-
-    # Footer
+# Voeg een tabblad toe voor het exporteren van wijzigingen
+with st.sidebar:
     st.markdown("---")
-    st.markdown("© Lavans - Service App")
-
-    # --- Praktijkvragen matten ... (blijven bovenaan) ---
-    # ... praktijkvragen code ...
-
-    # --- Intelligente optimalisatiecheck voor wissers ---
-    wissers_optimalisatie_todo = False
-    wissers_abos_db = [a for a in abon_data if a.get("activiteit", "") == "Wissers"]
-
-    for wisser_abo in wissers_abos_db:
-        aantal = int(wisser_abo.get("aantal", 0) or 0)
-        bezoekritme = str(wisser_abo.get("bezoekritme", "")).lower()
-        if aantal <= 2 and (bezoekritme == "1-wekelijks" or bezoekritme == "wekelijks"):
-            # Kijk naar andere productgroepen
-            andere_abos = [a for a in abon_data if a.get("activiteit", "") != "Wissers"]
-            andere_ritmes = [str(a.get("bezoekritme", "")).lower() for a in andere_abos if a.get("bezoekritme")]
-            if andere_ritmes and all(r not in ["1-wekelijks", "wekelijks"] for r in andere_ritmes):
-                # Alleen als de andere productgroepen minder vaak zijn
-                wissers_optimalisatie_todo = True
-                break
-
-    if wissers_optimalisatie_todo:
-        add_todo_action(
-            "Optimaliseren wisselfrequentie: Bespreek met de klant of de wisselfrequentie van de wisser(s) kan worden aangepast. "
-            "Als we toch wekelijks voor matten of een ander product komen, is het niet erg om een wisser mee te nemen. "
-            "Maar als we speciaal voor de wisser komen (aantal <= 2, bezoekritme 1-wekelijks), optimaliseren: wisselfrequentie verdubbelen, aantal ook. "
-            "To-do SM: Bespreken met de klant dat we dit gaan doen. Kosten blijven gelijk, maar we komen niet onnodig vaak. Actie KS: abonnement omzetten voor gelijke jaarlijkse kosten."
-        )
+    st.subheader("Wijzigingen Log")
+    export_wijzigingen_log()
