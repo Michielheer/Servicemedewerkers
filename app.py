@@ -969,6 +969,8 @@ with data_tab:
     # Haal contactpersonen op voor deze klant
     contactpersonen_df = pd.DataFrame(contactpersonen_data)
     if not contactpersonen_df.empty:
+        if 'contactpersonen_df_orig' not in st.session_state:
+            st.session_state['contactpersonen_df_orig'] = contactpersonen_df.copy()
         editable_df = st.data_editor(
             contactpersonen_df,
             column_config={
@@ -987,13 +989,40 @@ with data_tab:
         )
         if st.button("Wijzigingen loggen en to-do voor klantenservice aanmaken", key="log_contact_wijzigingen"):
             if save_contact_wijzigingen(editable_df, relatienummer):
-                # Voeg een to-do toe voor de klantenservice
+                # Vergelijk oude en nieuwe data en maak per contactpersoon een samenvatting
+                orig = st.session_state['contactpersonen_df_orig']
+                nieuw = editable_df
                 if 'klantenservice_todo_list' not in st.session_state:
                     st.session_state['klantenservice_todo_list'] = []
-                st.session_state['klantenservice_todo_list'].append({
-                    "text": f"Contactpersonen gewijzigd voor klant {relatienummer}. Controleer en verwerk in CRM.",
-                    "done": False
-                })
-                st.success("Wijzigingen gelogd en to-do voor klantenservice toegevoegd!")
+                # Zet e-mail als unieke sleutel
+                orig_emails = set(orig['E-mailadres'].dropna())
+                nieuw_emails = set(nieuw['E-mailadres'].dropna())
+                # Toegevoegd
+                for email in nieuw_emails - orig_emails:
+                    row = nieuw[nieuw['E-mailadres'] == email].iloc[0]
+                    summary = f"Contactpersoon toegevoegd (email: {email}):\n"
+                    for col in nieuw.columns:
+                        summary += f"- {col}: {row[col]}\n"
+                    st.session_state['klantenservice_todo_list'].append({"text": summary, "done": False})
+                # Verwijderd
+                for email in orig_emails - nieuw_emails:
+                    row = orig[orig['E-mailadres'] == email].iloc[0]
+                    summary = f"Contactpersoon verwijderd (email: {email}):\n"
+                    for col in orig.columns:
+                        summary += f"- {col}: {row[col]}\n"
+                    st.session_state['klantenservice_todo_list'].append({"text": summary, "done": False})
+                # Gewijzigd
+                for email in nieuw_emails & orig_emails:
+                    row_orig = orig[orig['E-mailadres'] == email].iloc[0]
+                    row_nieuw = nieuw[nieuw['E-mailadres'] == email].iloc[0]
+                    wijzigingen = []
+                    for col in nieuw.columns:
+                        if str(row_orig[col]) != str(row_nieuw[col]):
+                            wijzigingen.append(f"- {col}: {row_orig[col]} → {row_nieuw[col]}")
+                    if wijzigingen:
+                        summary = f"Contactpersoon gewijzigd (email: {email}):\n" + "\n".join(wijzigingen)
+                        st.session_state['klantenservice_todo_list'].append({"text": summary, "done": False})
+                st.session_state['contactpersonen_df_orig'] = nieuw.copy()
+                st.success("Wijzigingen gelogd en to-do's voor klantenservice toegevoegd!")
     else:
         st.info("Geen contactpersonen gevonden voor deze klant.")
