@@ -111,6 +111,13 @@ def genereer_todo_list():
             add_todo_action(f"Controleer opmerking bij mat '{mat_naam}'{locatie}: {mat['opmerking']}")
         if afdeling == 'Algemeen' and ligplaats == 'Algemeen':
             add_todo_action(f"Specificeer afdeling en ligplaats voor mat '{mat_naam}' (nu: Algemeen/Algemeen)")
+        # Jaarcheck logomatten: alleen voor logomatten
+        if 'barcode' in mat and mat.get('barcode') and mat_naam.lower().startswith('logo'):
+            leeftijd_str = extract_mat_leeftijd(mat['barcode'])
+            # Zoek naar 'jaar' in de string en pak het getal
+            match = re.search(r'(\d+) jaar', leeftijd_str)
+            if match and int(match.group(1)) >= 3:
+                add_todo_action(f"Controleer logomat '{mat_naam}' (ouder dan 3 jaar)")
 
     # Wissers
     wissers_tabel = st.session_state.get('wissers_tabel', [])
@@ -582,6 +589,12 @@ with form_tab:
         if soort == "Wissers":
             # Vraag 2.1 bovenaan bij wissers
             st.markdown("### 2.1 Zien we wissers van concurrenten staan?")
+            wissers_concurrent = st.radio("Zien we wissers van concurrenten staan?", ["Nee", "Ja"], key=f"wissers_concurrent_{soort}")
+            data["wissers_concurrent"] = wissers_concurrent
+            if wissers_concurrent == "Ja":
+                data["wissers_concurrent_toelichting"] = st.text_input("Welke concurrent(en)?", key=f"wissers_concurrent_toelichting_{soort}")
+            else:
+                data["wissers_concurrent_toelichting"] = ""
             andere_zaken = st.text_area("Zie je andere schoonmaakmiddelen staan? (Bezems, wissers van andere leveranciers, etc.)", key=f"andere_zaken_{soort}")
             data["andere_zaken"] = andere_zaken
 
@@ -709,80 +722,30 @@ with form_tab:
 
             # Maak tabs voor standaard en logo matten
             if st.session_state.logomatten_lijst:
-                standaard_tab, logo_tab = st.tabs(["Standaard matten", "Logomatten"])
+                if st.session_state.standaard_matten_lijst:
+                    standaard_tab, logo_tab = st.tabs(["Standaard matten", "Logomatten"])
+                else:
+                    logo_tab, = st.tabs(["Logomatten"])
             else:
                 standaard_tab, = st.tabs(["Standaard matten"])
 
-            with standaard_tab:
-                st.markdown("#### Standaard matten")
-                mat_data = []
-                for i, mat in enumerate(st.session_state.standaard_matten_lijst):
-                    mat_data.append({
-                        "Productomschrijving": mat["mat_type"],
-                        "Afdeling": mat["afdeling"],
-                        "Ligplaats": mat["ligplaats"],
-                        "Aantal": mat["aantal"],
-                        "Aanwezig": False,
-                        "Schoon/onbeschadigd": mat["schoon_onbeschadigd"],
-                        "Vuilgraad": ""
-                    })
-                if mat_data:
-                    df = pd.DataFrame(mat_data)
-                    column_order = ["Afdeling", "Ligplaats", "Productomschrijving", "Aantal", "Vuilgraad", "Aanwezig", "Schoon/onbeschadigd"]
-                    columns_to_use = [col for col in column_order if col in df.columns]
-                    other_columns = [col for col in df.columns if col not in column_order]
-                    final_column_order = columns_to_use + other_columns
-                    df = df[final_column_order]
-                    edited_df = st.data_editor(
-                        df,
-                        column_config={
-                            "Productomschrijving": st.column_config.TextColumn("Productomschrijving", disabled=True),
-                            "Afdeling": st.column_config.SelectboxColumn("Afdeling", options=afdelingen, required=True),
-                            "Ligplaats": st.column_config.SelectboxColumn("Ligplaats", options=ligplaatsen, required=True),
-                            "Aantal": st.column_config.NumberColumn("Aantal", min_value=0),
-                            "Aanwezig": st.column_config.CheckboxColumn("Aanwezig"),
-                            "Schoon/onbeschadigd": st.column_config.CheckboxColumn("Schoon/onbeschadigd"),
-                            "Vuilgraad": st.column_config.SelectboxColumn("Vuilgraad", options=["", "Schoon", "Licht vervuild", "Sterk vervuild"], required=True)
-                        },
-                        hide_index=True,
-                        num_rows="dynamic",
-                        key=f"standaard_matten_editor_{soort}"
-                    )
-                    if edited_df is not None:
-                        for i, row in edited_df.iterrows():
-                            mat = st.session_state.standaard_matten_lijst[i]
-                            mat["afdeling"] = row["Afdeling"]
-                            mat["ligplaats"] = row["Ligplaats"]
-                            mat["aantal"] = row["Aantal"]
-                            mat["aanwezig"] = bool(row["Aanwezig"])
-                            mat["schoon_onbeschadigd"] = bool(row["Schoon/onbeschadigd"])
-                            mat["vuilgraad_label"] = row["Vuilgraad"]
-                            if row["Vuilgraad"] == "Schoon":
-                                mat["vuilgraad"] = 0
-                            elif row["Vuilgraad"] == "Licht vervuild":
-                                mat["vuilgraad"] = 1
-                            else:
-                                mat["vuilgraad"] = 2
-
-            if st.session_state.logomatten_lijst:
-                with logo_tab:
-                    st.markdown("#### Logomatten")
+            if st.session_state.standaard_matten_lijst:
+                with standaard_tab:
+                    st.markdown("#### Standaard matten")
                     mat_data = []
-                    for i, mat in enumerate(st.session_state.logomatten_lijst):
+                    for i, mat in enumerate(st.session_state.standaard_matten_lijst):
                         mat_data.append({
                             "Productomschrijving": mat["mat_type"],
                             "Afdeling": mat["afdeling"],
                             "Ligplaats": mat["ligplaats"],
-                            "Barcode": mat.get("barcode", ""),
-                            "Leeftijd": extract_mat_leeftijd(mat.get("barcode", "")) if mat.get("barcode") else "-",
                             "Aantal": mat["aantal"],
                             "Aanwezig": False,
                             "Schoon/onbeschadigd": mat["schoon_onbeschadigd"],
-                            "Vuilgraad": mat.get("vuilgraad_label", "Licht vervuild")
+                            "Vuilgraad": ""
                         })
                     if mat_data:
                         df = pd.DataFrame(mat_data)
-                        column_order = ["Afdeling", "Ligplaats", "Productomschrijving", "Vuilgraad", "Barcode", "Leeftijd", "Aantal", "Aanwezig", "Schoon/onbeschadigd"]
+                        column_order = ["Afdeling", "Ligplaats", "Productomschrijving", "Aantal", "Vuilgraad", "Aanwezig", "Schoon/onbeschadigd"]
                         columns_to_use = [col for col in column_order if col in df.columns]
                         other_columns = [col for col in df.columns if col not in column_order]
                         final_column_order = columns_to_use + other_columns
@@ -793,7 +756,62 @@ with form_tab:
                                 "Productomschrijving": st.column_config.TextColumn("Productomschrijving", disabled=True),
                                 "Afdeling": st.column_config.SelectboxColumn("Afdeling", options=afdelingen, required=True),
                                 "Ligplaats": st.column_config.SelectboxColumn("Ligplaats", options=ligplaatsen, required=True),
-                                "Barcode": st.column_config.TextColumn("Barcode"),
+                                "Aantal": st.column_config.NumberColumn("Aantal", min_value=0),
+                                "Aanwezig": st.column_config.CheckboxColumn("Aanwezig"),
+                                "Schoon/onbeschadigd": st.column_config.CheckboxColumn("Schoon/onbeschadigd"),
+                                "Vuilgraad": st.column_config.SelectboxColumn("Vuilgraad", options=["", "Schoon", "Licht vervuild", "Sterk vervuild"], required=True)
+                            },
+                            hide_index=True,
+                            num_rows="dynamic",
+                            key=f"standaard_matten_editor_{soort}"
+                        )
+                        if edited_df is not None:
+                            for i, row in edited_df.iterrows():
+                                mat = st.session_state.standaard_matten_lijst[i]
+                                mat["afdeling"] = row["Afdeling"]
+                                mat["ligplaats"] = row["Ligplaats"]
+                                mat["aantal"] = row["Aantal"]
+                                mat["aanwezig"] = bool(row["Aanwezig"])
+                                mat["schoon_onbeschadigd"] = bool(row["Schoon/onbeschadigd"])
+                                mat["vuilgraad_label"] = row["Vuilgraad"]
+                                if row["Vuilgraad"] == "Schoon":
+                                    mat["vuilgraad"] = 0
+                                elif row["Vuilgraad"] == "Licht vervuild":
+                                    mat["vuilgraad"] = 1
+                                else:
+                                    mat["vuilgraad"] = 2
+
+            if st.session_state.logomatten_lijst:
+                with logo_tab:
+                    st.markdown("#### Logomatten")
+                    mat_data = []
+                    for i, mat in enumerate(st.session_state.logomatten_lijst):
+                        mat_data.append({
+                            "Productomschrijving": mat["mat_type"],
+                            "Afdeling": mat["afdeling"],
+                            "Ligplaats": mat["ligplaats"],
+                            "Barcode (eerste 7 cijfers)": mat.get("barcode", ""),
+                            "Aantal": mat["aantal"],
+                            "Aanwezig": False,
+                            "Schoon/onbeschadigd": mat["schoon_onbeschadigd"],
+                            "Vuilgraad": ""
+                        })
+                    if mat_data:
+                        df = pd.DataFrame(mat_data)
+                        # Leeftijd live berekenen uit barcode
+                        df["Leeftijd"] = df["Barcode (eerste 7 cijfers)"].apply(lambda x: extract_mat_leeftijd(str(x)) if x else "-")
+                        column_order = ["Afdeling", "Ligplaats", "Productomschrijving", "Vuilgraad", "Barcode (eerste 7 cijfers)", "Leeftijd", "Aantal", "Aanwezig", "Schoon/onbeschadigd"]
+                        columns_to_use = [col for col in column_order if col in df.columns]
+                        other_columns = [col for col in df.columns if col not in column_order]
+                        final_column_order = columns_to_use + other_columns
+                        df = df[final_column_order]
+                        edited_df = st.data_editor(
+                            df,
+                            column_config={
+                                "Productomschrijving": st.column_config.TextColumn("Productomschrijving", disabled=True),
+                                "Afdeling": st.column_config.SelectboxColumn("Afdeling", options=afdelingen, required=True),
+                                "Ligplaats": st.column_config.SelectboxColumn("Ligplaats", options=ligplaatsen, required=True),
+                                "Barcode (eerste 7 cijfers)": st.column_config.TextColumn("Barcode (eerste 7 cijfers)", help="Vul de eerste 7 cijfers in (bijv. 0200720 voor juni 2020)"),
                                 "Leeftijd": st.column_config.TextColumn("Leeftijd", disabled=True),
                                 "Aantal": st.column_config.NumberColumn("Aantal", min_value=0),
                                 "Aanwezig": st.column_config.CheckboxColumn("Aanwezig"),
@@ -809,7 +827,7 @@ with form_tab:
                                 mat = st.session_state.logomatten_lijst[i]
                                 mat["afdeling"] = row["Afdeling"]
                                 mat["ligplaats"] = row["Ligplaats"]
-                                mat["barcode"] = row["Barcode"]
+                                mat["barcode"] = row["Barcode (eerste 7 cijfers)"]
                                 mat["aantal"] = row["Aantal"]
                                 mat["aanwezig"] = bool(row["Aanwezig"])
                                 mat["schoon_onbeschadigd"] = bool(row["Schoon/onbeschadigd"])
@@ -824,6 +842,7 @@ with form_tab:
             data['fotos'] = st.file_uploader("Upload foto's van matten en locaties", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key=f"fotos_{soort}")
             if data['fotos']:
                 st.success(f"{len(data['fotos'])} foto's geüpload")
+
             return data
 
     # Toon de vragenlijst als er geen laatste bezoek is of als het laatste bezoek meer dan 6 maanden geleden was
