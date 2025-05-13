@@ -1013,13 +1013,6 @@ with data_tab:
                 for col in nieuw.columns:
                     summary += f"- {col}: {row[col]}\n"
                 st.session_state['klantenservice_todo_list'].append({"text": summary, "done": False})
-                # Extra check: klantportaal gebruikersnaam ontbreekt
-                gebruikersnaam = row.get('Klantenportaal_gebruikersnaam', None)
-                if not gebruikersnaam or str(gebruikersnaam).strip().lower() in ['none', '']:
-                    st.session_state['klantenservice_todo_list'].append({
-                        "text": f"Uitnodigen klantportaal voor {email}",
-                        "done": False
-                    })
             # Verwijderd
             for email in orig_emails - nieuw_emails:
                 row = orig[orig['E-mailadres'] == email].iloc[0]
@@ -1027,13 +1020,6 @@ with data_tab:
                 for col in orig.columns:
                     summary += f"- {col}: {row[col]}\n"
                 st.session_state['klantenservice_todo_list'].append({"text": summary, "done": False})
-                # Extra check: klantportaal gebruikersnaam ontbreekt
-                gebruikersnaam = row.get('Klantenportaal_gebruikersnaam', None)
-                if not gebruikersnaam or str(gebruikersnaam).strip().lower() in ['none', '']:
-                    st.session_state['klantenservice_todo_list'].append({
-                        "text": f"Uitnodigen klantportaal voor {email}",
-                        "done": False
-                    })
             # Gewijzigd
             for email in nieuw_emails & orig_emails:
                 row_orig = orig[orig['E-mailadres'] == email].iloc[0]
@@ -1045,9 +1031,13 @@ with data_tab:
                 if wijzigingen:
                     summary = f"Contactpersoon gewijzigd (email: {email}):\n" + "\n".join(wijzigingen)
                     st.session_state['klantenservice_todo_list'].append({"text": summary, "done": False})
-                    # Extra check: klantportaal gebruikersnaam ontbreekt
-                    gebruikersnaam = row_nieuw.get('Klantenportaal_gebruikersnaam', None)
-                    if not gebruikersnaam or str(gebruikersnaam).strip().lower() in ['none', '']:
+            # Altijd: check klantportaal gebruikersnaam voor alle contactpersonen
+            for i, row in nieuw.iterrows():
+                gebruikersnaam = row.get('Klantenportaal_gebruikersnaam', None)
+                email = row.get('E-mailadres', '')
+                if not gebruikersnaam or str(gebruikersnaam).strip().lower() in ['none', '']:
+                    # Voeg alleen toe als deze to-do nog niet bestaat
+                    if not any(f"Uitnodigen klantportaal voor {email}" in t["text"] for t in st.session_state['klantenservice_todo_list']):
                         st.session_state['klantenservice_todo_list'].append({
                             "text": f"Uitnodigen klantportaal voor {email}",
                             "done": False
