@@ -502,8 +502,8 @@ for contactpersoon in contactpersonen_data:
 contactpersoon_str = ", ".join(contactpersonen_lijst) if contactpersonen_lijst else "-"
 
 # --- Voeg tabs toe voor formulier en rapportage ---
-# Toon Inspectieformulier, To-do lijst én Dataverrijking
-tabs = ["📝 Inspectieformulier", "📝 To-do lijst", "📊 Dataverrijking"]
+# Toon Inspectieformulier, To-do lijst én Contactpersoon aanpassing
+tabs = ["📝 Inspectieformulier", "📝 To-do lijst", "👤 Contactpersoon aanpassing"]
 form_tab, todo_tab, data_tab = st.tabs(tabs)
 
 with form_tab:
@@ -958,15 +958,14 @@ with st.sidebar:
     st.subheader("Wijzigingen Log")
     export_wijzigingen_log()
 
-# --- Dataverrijking tabblad ---
+# --- Contactpersoon aanpassing tabblad ---
 with data_tab:
-    st.header("Dataverrijking")
-    st.info("Hier kun je in de toekomst extra data-analyses, exports of verrijkingen tonen.")
+    st.header("Contactpersoon aanpassing")
+    st.markdown("Controleer hieronder of de juiste contactpersonen in het systeem staan. Pas aan waar nodig.\nAls alles klopt, hoef je niets te doen.\n\n**Let op:** Zet 'Nog in dienst' uit als iemand niet meer actief is.")
 
     # --- Contactpersonenbeheer ---
     st.markdown("---")
-    st.subheader("Contactpersonen beheren")
-    # Haal contactpersonen op voor deze klant
+    st.subheader("Contactpersonen overzicht")
     contactpersonen_df = pd.DataFrame(contactpersonen_data)
     if not contactpersonen_df.empty:
         if 'contactpersonen_df_orig' not in st.session_state:
@@ -987,42 +986,44 @@ with data_tab:
             num_rows="dynamic",
             key="contactpersonen_editor"
         )
-        if st.button("Wijzigingen loggen en to-do voor klantenservice aanmaken", key="log_contact_wijzigingen"):
-            if save_contact_wijzigingen(editable_df, relatienummer):
-                # Vergelijk oude en nieuwe data en maak per contactpersoon een samenvatting
-                orig = st.session_state['contactpersonen_df_orig']
-                nieuw = editable_df
-                if 'klantenservice_todo_list' not in st.session_state:
-                    st.session_state['klantenservice_todo_list'] = []
-                # Zet e-mail als unieke sleutel
-                orig_emails = set(orig['E-mailadres'].dropna())
-                nieuw_emails = set(nieuw['E-mailadres'].dropna())
-                # Toegevoegd
-                for email in nieuw_emails - orig_emails:
-                    row = nieuw[nieuw['E-mailadres'] == email].iloc[0]
-                    summary = f"Contactpersoon toegevoegd (email: {email}):\n"
-                    for col in nieuw.columns:
-                        summary += f"- {col}: {row[col]}\n"
+        st.markdown("---")
+        st.markdown("**Let op:** Alle wijzigingen worden pas gelogd als je op onderstaande knop drukt.")
+        if st.button("Log wijzigingen naar klantenservice to-do", key="log_contact_wijzigingen"):
+            orig = st.session_state['contactpersonen_df_orig']
+            nieuw = editable_df
+            if 'klantenservice_todo_list' not in st.session_state:
+                st.session_state['klantenservice_todo_list'] = []
+            orig_emails = set(orig['E-mailadres'].dropna())
+            nieuw_emails = set(nieuw['E-mailadres'].dropna())
+            # Toegevoegd
+            for email in nieuw_emails - orig_emails:
+                row = nieuw[nieuw['E-mailadres'] == email].iloc[0]
+                summary = f"Contactpersoon toegevoegd (email: {email}):\n"
+                for col in nieuw.columns:
+                    summary += f"- {col}: {row[col]}\n"
+                st.session_state['klantenservice_todo_list'].append({"text": summary, "done": False})
+                # Hier kun je optioneel loggen naar een nieuwe tabel
+            # Verwijderd
+            for email in orig_emails - nieuw_emails:
+                row = orig[orig['E-mailadres'] == email].iloc[0]
+                summary = f"Contactpersoon verwijderd (email: {email}):\n"
+                for col in orig.columns:
+                    summary += f"- {col}: {row[col]}\n"
+                st.session_state['klantenservice_todo_list'].append({"text": summary, "done": False})
+                # Hier kun je optioneel loggen naar een nieuwe tabel
+            # Gewijzigd
+            for email in nieuw_emails & orig_emails:
+                row_orig = orig[orig['E-mailadres'] == email].iloc[0]
+                row_nieuw = nieuw[nieuw['E-mailadres'] == email].iloc[0]
+                wijzigingen = []
+                for col in nieuw.columns:
+                    if str(row_orig[col]) != str(row_nieuw[col]):
+                        wijzigingen.append(f"- {col}: {row_orig[col]} → {row_nieuw[col]}")
+                if wijzigingen:
+                    summary = f"Contactpersoon gewijzigd (email: {email}):\n" + "\n".join(wijzigingen)
                     st.session_state['klantenservice_todo_list'].append({"text": summary, "done": False})
-                # Verwijderd
-                for email in orig_emails - nieuw_emails:
-                    row = orig[orig['E-mailadres'] == email].iloc[0]
-                    summary = f"Contactpersoon verwijderd (email: {email}):\n"
-                    for col in orig.columns:
-                        summary += f"- {col}: {row[col]}\n"
-                    st.session_state['klantenservice_todo_list'].append({"text": summary, "done": False})
-                # Gewijzigd
-                for email in nieuw_emails & orig_emails:
-                    row_orig = orig[orig['E-mailadres'] == email].iloc[0]
-                    row_nieuw = nieuw[nieuw['E-mailadres'] == email].iloc[0]
-                    wijzigingen = []
-                    for col in nieuw.columns:
-                        if str(row_orig[col]) != str(row_nieuw[col]):
-                            wijzigingen.append(f"- {col}: {row_orig[col]} → {row_nieuw[col]}")
-                    if wijzigingen:
-                        summary = f"Contactpersoon gewijzigd (email: {email}):\n" + "\n".join(wijzigingen)
-                        st.session_state['klantenservice_todo_list'].append({"text": summary, "done": False})
-                st.session_state['contactpersonen_df_orig'] = nieuw.copy()
-                st.success("Wijzigingen gelogd en to-do's voor klantenservice toegevoegd!")
+                    # Hier kun je optioneel loggen naar een nieuwe tabel
+            st.session_state['contactpersonen_df_orig'] = nieuw.copy()
+            st.success("Wijzigingen gelogd en to-do's voor klantenservice toegevoegd!")
     else:
         st.info("Geen contactpersonen gevonden voor deze klant.")
