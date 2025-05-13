@@ -25,6 +25,10 @@ import hashlib
 import smtplib
 from email.message import EmailMessage
 from datetime import datetime
+import pytz
+
+# Nederlandse tijdzone
+nl_tz = pytz.timezone('Europe/Amsterdam')
 
 # --- Hulpfuncties
 
@@ -40,7 +44,8 @@ def log_wijziging(relatienummer, klantnaam, soort_wijziging, productnummer, veld
             "nieuwe_waarde": str(nieuwe_waarde),
             "gewijzigd_door": gewijzigd_door,
             "status": "nieuw",
-            "opmerking": opmerking
+            "opmerking": opmerking,
+            "gewijzigd_op": datetime.now(nl_tz).isoformat()
         }
         response = supabase.table("service_wijzigingen_log").insert(log_entry).execute()
         return True
@@ -154,7 +159,7 @@ def save_contact_wijzigingen(updated_df, relatienummer, gewijzigd_door="onbekend
                 "klantenportaal_gebruikersnaam": row["Klantenportaal_gebruikersnaam"],
                 "nog_in_dienst": row["Nog_in_dienst"],
                 "actie": "toegevoegd_of_gewijzigd",
-                "verwijderd_op": datetime.now().isoformat(),
+                "verwijderd_op": datetime.now(nl_tz).isoformat(),
                 "verwijderd_door": gewijzigd_door
             }
             supabase.table("contactpersonen_log").insert(log_entry).execute()
@@ -175,7 +180,7 @@ def save_contact_wijzigingen(updated_df, relatienummer, gewijzigd_door="onbekend
                     "klantenportaal_gebruikersnaam": contact.get("Klantenportaal_gebruikersnaam", ""),
                     "nog_in_dienst": contact.get("Nog_in_dienst", True),
                     "actie": "verwijderd",
-                    "verwijderd_op": datetime.now().isoformat(),
+                    "verwijderd_op": datetime.now(nl_tz).isoformat(),
                     "verwijderd_door": gewijzigd_door
                 }
                 supabase.table("contactpersonen_log").insert(log_entry).execute()
@@ -211,7 +216,7 @@ class LavansReport(FPDF):
         self.set_y(-15)
         self.set_font('Arial', 'I', 8)
         # Paginanummer en datum
-        self.cell(0, 10, f'Pagina {self.page_no()}/{{nb}} - © Lavans - {date.today().strftime("%d-%m-%Y")}', 0, 0, 'C')
+        self.cell(0, 10, f'Pagina {self.page_no()}/{{nb}} - © Lavans - {datetime.now(nl_tz).strftime("%d-%m-%Y")}', 0, 0, 'C')
     
     def chapter_title(self, title):
         self.set_font('Arial', 'B', 14)
@@ -444,8 +449,8 @@ klantnaam = klanten_uniek[str(relatienummer)]
 # Wanneer een klant wordt geselecteerd, sla de huidige datum en tijd op
 if 'geselecteerde_klant' not in st.session_state or st.session_state.geselecteerde_klant != relatienummer:
     st.session_state.geselecteerde_klant = relatienummer
-    st.session_state.bezoek_datum = date.today()
-    st.session_state.bezoek_tijd = datetime.now().strftime("%H:%M")
+    st.session_state.bezoek_datum = datetime.now(nl_tz).date()
+    st.session_state.bezoek_tijd = datetime.now(nl_tz).strftime("%H:%M")
 
 # --- Abonnementen ophalen ---
 abon_data = supabase.table("abonnementen").select("*").eq("relatienummer", relatienummer).execute().data
@@ -540,7 +545,7 @@ with form_tab:
     with col1:
         inspectie_datum = st.date_input("Datum bezoek", value=st.session_state.get('bezoek_datum', date.today()))
     with col2:
-        inspectie_tijd = st.text_input("Tijdstip bezoek", value=st.session_state.get('bezoek_tijd', datetime.now().strftime("%H:%M")))
+        inspectie_tijd = st.text_input("Tijdstip bezoek", value=st.session_state.get('bezoek_tijd', datetime.now(nl_tz).strftime("%H:%M")))
 
     # Laatste bezoek altijd leeg
     laatste_bezoek = st.date_input("Laatste bezoek", value=None, key="laatste_bezoek")
@@ -936,7 +941,7 @@ def export_wijzigingen_log():
             st.download_button(
                 label="Download wijzigingen log (CSV)",
                 data=csv,
-                file_name=f"wijzigingen_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                file_name=f"wijzigingen_log_{datetime.now(nl_tz).strftime('%Y%m%d_%H%M%S')}.csv",
                 mime="text/csv"
             )
             
