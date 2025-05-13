@@ -762,7 +762,7 @@ with form_tab:
                             "Barcode (eerste 7 cijfers)": mat.get("barcode", ""),
                             "Aantal": mat["aantal"],
                             "Aanwezig": False,
-                            "Vuilgraad": mat.get("vuilgraad_label", "Licht vervuild")
+                            "Vuilgraad": ""
                         })
                     if mat_data:
                         df = pd.DataFrame(mat_data)
