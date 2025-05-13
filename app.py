@@ -118,6 +118,15 @@ def genereer_todo_list():
             match = re.search(r'(\d+) jaar', leeftijd_str)
             if match and int(match.group(1)) >= 3:
                 add_todo_action(f"Controleer logomat '{mat_naam}' (ouder dan 3 jaar)")
+                # Voeg ook een to-do toe voor de klantenservice
+                if 'klantenservice_todo_list' not in st.session_state:
+                    st.session_state['klantenservice_todo_list'] = []
+                tekst = f"Logomat ouder dan 3 jaar bij klant '{mat_naam}': plan nieuwe logomat, check of logo gelijk is gebleven, geef aan dat je een nieuwe gaat bestellen."
+                if not any(tekst in t["text"] for t in st.session_state['klantenservice_todo_list']):
+                    st.session_state['klantenservice_todo_list'].append({
+                        "text": tekst,
+                        "done": False
+                    })
 
     # Wissers
     wissers_tabel = st.session_state.get('wissers_tabel', [])
