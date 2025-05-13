@@ -973,7 +973,9 @@ with data_tab:
         "Functie", "functie", "Functiebeschrijving", "aanvullende functie omschrijving",
         "rol_gebruiker", "Rol gebruiker", "Rol_Bessliiser", "Rol_Beslisser",
         "Operationeel contact", "Operationeel Contact",
-        "Financieel contact", "Financieel Contact"
+        "Financieel contact", "Financieel Contact",
+        "Rol_gebruiker", "Rol_beslisser", "Operationeel_contact", "Financieel_contact", "Actief",
+        "Relatie", "Functies", "Aanvullende_functie_omschrijving"
     ]
     for col in kolommen_verwijderen:
         if col in contactpersonen_df.columns:
