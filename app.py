@@ -967,8 +967,15 @@ with data_tab:
     st.markdown("---")
     st.subheader("Contactpersonen overzicht")
     contactpersonen_df = pd.DataFrame(contactpersonen_data)
+    st.write("Kolomnamen in de tabel:", contactpersonen_df.columns.tolist())
     # Verwijder ongewenste kolommen indien aanwezig
-    for col in ["Functie", "aanvullende functie omschrijving", "rol_gebruiker", "Rol_Bessliiser", "Operationeel contact", "Financieel contact"]:
+    kolommen_verwijderen = [
+        "Functie", "functie", "Functiebeschrijving", "aanvullende functie omschrijving",
+        "rol_gebruiker", "Rol gebruiker", "Rol_Bessliiser", "Rol_Beslisser",
+        "Operationeel contact", "Operationeel Contact",
+        "Financieel contact", "Financieel Contact"
+    ]
+    for col in kolommen_verwijderen:
         if col in contactpersonen_df.columns:
             contactpersonen_df = contactpersonen_df.drop(columns=[col])
     if not contactpersonen_df.empty:
