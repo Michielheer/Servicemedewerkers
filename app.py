@@ -967,6 +967,10 @@ with data_tab:
     st.markdown("---")
     st.subheader("Contactpersonen overzicht")
     contactpersonen_df = pd.DataFrame(contactpersonen_data)
+    # Verwijder ongewenste kolommen indien aanwezig
+    for col in ["Functie", "aanvullende functie omschrijving", "rol_gebruiker", "Rol_Bessliiser", "Operationeel contact", "Financieel contact"]:
+        if col in contactpersonen_df.columns:
+            contactpersonen_df = contactpersonen_df.drop(columns=[col])
     if not contactpersonen_df.empty:
         if 'contactpersonen_df_orig' not in st.session_state:
             st.session_state['contactpersonen_df_orig'] = contactpersonen_df.copy()
@@ -977,7 +981,6 @@ with data_tab:
                 "Tussenvoegsel": st.column_config.TextColumn("Tussenvoegsel"),
                 "Achternaam": st.column_config.TextColumn("Achternaam"),
                 "E-mailadres": st.column_config.TextColumn("E-mailadres"),
-                "Functie": st.column_config.TextColumn("Functie"),
                 "Telefoonnummer": st.column_config.TextColumn("Telefoonnummer"),
                 "Klantenportaal_gebruikersnaam": st.column_config.TextColumn("Klantenportaal_gebruikersnaam"),
                 "Nog_in_dienst": st.column_config.CheckboxColumn("Nog in dienst")
