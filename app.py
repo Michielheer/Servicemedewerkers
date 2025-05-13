@@ -342,13 +342,13 @@ def init_state():
         st.session_state.formulier_data = {}
 
 def extract_mat_leeftijd(barcode):
-    """Extracteer de leeftijd van de mat op basis van barcode (maand: pos 3-4, jaar: pos 5-6)."""
     barcode = str(barcode).strip()
-    if not barcode or len(barcode) < 8:
+    if not barcode or len(barcode) < 7:
         return "Onbekend (te kort)"
     try:
-        maand = int(barcode[3:5])
-        jaar = int(barcode[5:7])
+        # Voor 7-cijferige barcodes: maand = pos 2-3, jaar = pos 4-5
+        maand = int(barcode[2:4])
+        jaar = int(barcode[4:6])
         if maand < 1 or maand > 12:
             return f"Onbekend (maand {maand} ongeldig)"
         productie_datum = datetime.date(2000 + jaar, maand, 1)
