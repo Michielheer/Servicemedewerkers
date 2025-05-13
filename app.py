@@ -962,3 +962,38 @@ with st.sidebar:
 with data_tab:
     st.header("Dataverrijking")
     st.info("Hier kun je in de toekomst extra data-analyses, exports of verrijkingen tonen.")
+
+    # --- Contactpersonenbeheer ---
+    st.markdown("---")
+    st.subheader("Contactpersonen beheren")
+    # Haal contactpersonen op voor deze klant
+    contactpersonen_df = pd.DataFrame(contactpersonen_data)
+    if not contactpersonen_df.empty:
+        editable_df = st.data_editor(
+            contactpersonen_df,
+            column_config={
+                "Voornaam": st.column_config.TextColumn("Voornaam"),
+                "Tussenvoegsel": st.column_config.TextColumn("Tussenvoegsel"),
+                "Achternaam": st.column_config.TextColumn("Achternaam"),
+                "E-mailadres": st.column_config.TextColumn("E-mailadres"),
+                "Functie": st.column_config.TextColumn("Functie"),
+                "Telefoonnummer": st.column_config.TextColumn("Telefoonnummer"),
+                "Klantenportaal_gebruikersnaam": st.column_config.TextColumn("Klantenportaal_gebruikersnaam"),
+                "Nog_in_dienst": st.column_config.CheckboxColumn("Nog in dienst")
+            },
+            hide_index=True,
+            num_rows="dynamic",
+            key="contactpersonen_editor"
+        )
+        if st.button("Wijzigingen loggen en to-do voor klantenservice aanmaken", key="log_contact_wijzigingen"):
+            if save_contact_wijzigingen(editable_df, relatienummer):
+                # Voeg een to-do toe voor de klantenservice
+                if 'klantenservice_todo_list' not in st.session_state:
+                    st.session_state['klantenservice_todo_list'] = []
+                st.session_state['klantenservice_todo_list'].append({
+                    "text": f"Contactpersonen gewijzigd voor klant {relatienummer}. Controleer en verwerk in CRM.",
+                    "done": False
+                })
+                st.success("Wijzigingen gelogd en to-do voor klantenservice toegevoegd!")
+    else:
+        st.info("Geen contactpersonen gevonden voor deze klant.")
