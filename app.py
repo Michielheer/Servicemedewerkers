@@ -1013,7 +1013,13 @@ with data_tab:
                 for col in nieuw.columns:
                     summary += f"- {col}: {row[col]}\n"
                 st.session_state['klantenservice_todo_list'].append({"text": summary, "done": False})
-                # Hier kun je optioneel loggen naar een nieuwe tabel
+                # Extra check: klantportaal gebruikersnaam ontbreekt
+                gebruikersnaam = row.get('Klantenportaal_gebruikersnaam', None)
+                if not gebruikersnaam or str(gebruikersnaam).strip().lower() in ['none', '']:
+                    st.session_state['klantenservice_todo_list'].append({
+                        "text": f"Uitnodigen klantportaal voor {email}",
+                        "done": False
+                    })
             # Verwijderd
             for email in orig_emails - nieuw_emails:
                 row = orig[orig['E-mailadres'] == email].iloc[0]
@@ -1021,7 +1027,13 @@ with data_tab:
                 for col in orig.columns:
                     summary += f"- {col}: {row[col]}\n"
                 st.session_state['klantenservice_todo_list'].append({"text": summary, "done": False})
-                # Hier kun je optioneel loggen naar een nieuwe tabel
+                # Extra check: klantportaal gebruikersnaam ontbreekt
+                gebruikersnaam = row.get('Klantenportaal_gebruikersnaam', None)
+                if not gebruikersnaam or str(gebruikersnaam).strip().lower() in ['none', '']:
+                    st.session_state['klantenservice_todo_list'].append({
+                        "text": f"Uitnodigen klantportaal voor {email}",
+                        "done": False
+                    })
             # Gewijzigd
             for email in nieuw_emails & orig_emails:
                 row_orig = orig[orig['E-mailadres'] == email].iloc[0]
@@ -1033,7 +1045,13 @@ with data_tab:
                 if wijzigingen:
                     summary = f"Contactpersoon gewijzigd (email: {email}):\n" + "\n".join(wijzigingen)
                     st.session_state['klantenservice_todo_list'].append({"text": summary, "done": False})
-                    # Hier kun je optioneel loggen naar een nieuwe tabel
+                    # Extra check: klantportaal gebruikersnaam ontbreekt
+                    gebruikersnaam = row_nieuw.get('Klantenportaal_gebruikersnaam', None)
+                    if not gebruikersnaam or str(gebruikersnaam).strip().lower() in ['none', '']:
+                        st.session_state['klantenservice_todo_list'].append({
+                            "text": f"Uitnodigen klantportaal voor {email}",
+                            "done": False
+                        })
             st.session_state['contactpersonen_df_orig'] = nieuw.copy()
             st.success("Wijzigingen gelogd en to-do's voor klantenservice toegevoegd!")
     else:
