@@ -502,18 +502,15 @@ for contactpersoon in contactpersonen_data:
 contactpersoon_str = ", ".join(contactpersonen_lijst) if contactpersonen_lijst else "-"
 
 # --- Voeg tabs toe voor formulier en rapportage ---
-# Toon alleen Inspectieformulier en To-do lijst, verberg Rapportage en Dataverrijking
-tabs = ["📝 Inspectieformulier", "📝 To-do lijst"]
-form_tab, todo_tab = st.tabs(tabs)
-# De variabelen report_tab en data_tab blijven beschikbaar voor later gebruik, maar zijn nu niet zichtbaar.
-# report_tab, data_tab = None, None
+# Toon Inspectieformulier, To-do lijst én Dataverrijking
+tabs = ["📝 Inspectieformulier", "📝 To-do lijst", "📊 Dataverrijking"]
+form_tab, todo_tab, data_tab = st.tabs(tabs)
 
 with form_tab:
     # --- Contactpersoon selectie als eerste vraag ---
     st.markdown("---")
     st.subheader("Contactpersoon")
     st.markdown("Wie heb je gesproken en gaat de samenvatting ontvangen?")
-
     # Optie om bestaande contactpersoon te kiezen of nieuwe toe te voegen
     contact_opties = contactpersonen_lijst + ["Nieuwe contactpersoon toevoegen..."]
     contactpersoon_index = st.selectbox(
@@ -899,6 +896,25 @@ with todo_tab:
     if not st.session_state['todo_list']:
         st.info("Nog geen to-do's toegevoegd.")
 
+    # --- To-do klantenservice ---
+    st.markdown("---")
+    st.subheader("To-do klantenservice")
+    if 'klantenservice_todo_list' not in st.session_state:
+        st.session_state['klantenservice_todo_list'] = []
+        # Voorbeeld placeholder
+        st.session_state['klantenservice_todo_list'].append({"text": "Voorbeeld: Maak nieuwe contactpersoon aan in CRM.", "done": False})
+    for idx, todo in enumerate(st.session_state['klantenservice_todo_list']):
+        cols = st.columns([0.08, 0.8, 0.12])
+        checked = cols[0].checkbox("", value=todo["done"], key=f"ks_todo_done_{idx}")
+        text = cols[1].text_input("", value=todo["text"], key=f"ks_todo_text_{idx}")
+        remove = cols[2].button("🗑️", key=f"ks_remove_todo_{idx}")
+        st.session_state['klantenservice_todo_list'][idx]["done"] = checked
+        st.session_state['klantenservice_todo_list'][idx]["text"] = text
+        if remove:
+            st.session_state['klantenservice_todo_list'].pop(idx)
+    if not st.session_state['klantenservice_todo_list']:
+        st.info("Nog geen to-do's voor klantenservice.")
+
 def export_wijzigingen_log():
     """
     Exporteer de wijzigingen log als CSV
@@ -941,3 +957,8 @@ with st.sidebar:
     st.markdown("---")
     st.subheader("Wijzigingen Log")
     export_wijzigingen_log()
+
+# --- Dataverrijking tabblad ---
+with data_tab:
+    st.header("Dataverrijking")
+    st.info("Hier kun je in de toekomst extra data-analyses, exports of verrijkingen tonen.")
