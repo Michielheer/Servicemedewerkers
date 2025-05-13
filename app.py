@@ -123,14 +123,10 @@ def genereer_todo_list():
     wissers_tabel = st.session_state.get('wissers_tabel', [])
     for wisser in wissers_tabel:
         wisser_type = wisser.get('Type wisser', 'Onbekend')
-        afdeling = wisser.get('Afdeling', '')
-        ligplaats = wisser.get('Ligplaats', '')
         if wisser.get('Aantal', 1) == 0:
             add_todo_action(f"Controleer of wisser van type '{wisser_type}' verwijderd moet worden.")
         if wisser.get('Opmerking', '').strip():
             add_todo_action(f"Controleer opmerking bij wisser van type '{wisser_type}': {wisser['Opmerking']}")
-        if afdeling == 'Algemeen' and ligplaats == 'Algemeen':
-            add_todo_action(f"Specificeer afdeling en ligplaats voor wisser '{wisser_type}' (nu: Algemeen/Algemeen)")
 
     # Toebehoren
     toebehoren_tabel = st.session_state.get('toebehoren_tabel', [])
@@ -620,16 +616,14 @@ with form_tab:
             for wisser in wissers_abos:
                 wissers_data.append({
                     "Type wisser": wisser.get("productomschrijving", ""),
-                    "Afdeling": wisser.get("afdeling", "Algemeen"),
-                    "Ligplaats": wisser.get("ligplaats", "Algemeen"),
                     "Aantal": wisser.get("aantal", 0),
                     "Aanwezig": False,
                     "Opmerking": ""
                 })
             if wissers_data:
                 wissers_df = pd.DataFrame(wissers_data)
-                column_order = ["Type wisser", "Afdeling", "Ligplaats", "Aantal", "Aanwezig", "Opmerking"]
-                columns_to_use = [col for col in column_order if col in wissers_df.columns and col != "Schoon/onbeschadigd"]
+                column_order = ["Type wisser", "Aantal", "Aanwezig", "Opmerking"]
+                columns_to_use = [col for col in column_order if col in wissers_df.columns]
                 other_columns = [col for col in wissers_df.columns if col not in column_order]
                 final_column_order = columns_to_use + other_columns
                 wissers_df = wissers_df[final_column_order]
@@ -637,8 +631,6 @@ with form_tab:
                     wissers_df,
                     column_config={
                         "Type wisser": st.column_config.TextColumn("Type wisser", disabled=True),
-                        "Afdeling": st.column_config.SelectboxColumn("Afdeling", options=afdelingen, required=True),
-                        "Ligplaats": st.column_config.SelectboxColumn("Ligplaats", options=ligplaatsen, required=True),
                         "Aantal": st.column_config.NumberColumn("Aantal", min_value=0),
                         "Aanwezig": st.column_config.CheckboxColumn("Aanwezig"),
                         "Opmerking": st.column_config.TextColumn("Opmerking")
