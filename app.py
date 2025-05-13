@@ -651,30 +651,6 @@ with form_tab:
                 )
                 data["wissers_tabel"] = edited_wissers_df.to_dict("records")
 
-            # Toebehoren tabel
-            st.markdown("### Wissers hardware/toebehoren")
-            accessoires = ["Standaard steel", "Dubbele wissersteel", "Telescoopsteel", "Bak", "Muursteun"]
-            accessoires_data = []
-            for acc in accessoires:
-                accessoires_data.append({
-                    "Type accessoire": acc,
-                    "Aantal te vervangen": 0,
-                    "Opmerking": ""
-                })
-            accessoires_df = pd.DataFrame(accessoires_data)
-            edited_accessoires_df = st.data_editor(
-                accessoires_df,
-                column_config={
-                    "Type accessoire": st.column_config.TextColumn("Type accessoire", disabled=True),
-                    "Aantal te vervangen": st.column_config.NumberColumn("Aantal te vervangen", min_value=0),
-                    "Opmerking": st.column_config.TextColumn("Opmerking")
-                },
-                hide_index=True,
-                num_rows="fixed",
-                key=f"toebehoren_tabel_{soort}"
-            )
-            data["toebehoren_tabel"] = edited_accessoires_df.to_dict("records")
-
             return data
         else:
             # Begin met 1.2 omdat 1.1 al eerder is behandeld
