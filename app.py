@@ -624,13 +624,12 @@ with form_tab:
                     "Ligplaats": wisser.get("ligplaats", "Algemeen"),
                     "Aantal": wisser.get("aantal", 0),
                     "Aanwezig": False,
-                    "Schoon/onbeschadigd": True,
                     "Opmerking": ""
                 })
             if wissers_data:
                 wissers_df = pd.DataFrame(wissers_data)
-                column_order = ["Type wisser", "Afdeling", "Ligplaats", "Aantal", "Aanwezig", "Schoon/onbeschadigd", "Opmerking"]
-                columns_to_use = [col for col in column_order if col in wissers_df.columns]
+                column_order = ["Type wisser", "Afdeling", "Ligplaats", "Aantal", "Aanwezig", "Opmerking"]
+                columns_to_use = [col for col in column_order if col in wissers_df.columns and col != "Schoon/onbeschadigd"]
                 other_columns = [col for col in wissers_df.columns if col not in column_order]
                 final_column_order = columns_to_use + other_columns
                 wissers_df = wissers_df[final_column_order]
@@ -642,7 +641,6 @@ with form_tab:
                         "Ligplaats": st.column_config.SelectboxColumn("Ligplaats", options=ligplaatsen, required=True),
                         "Aantal": st.column_config.NumberColumn("Aantal", min_value=0),
                         "Aanwezig": st.column_config.CheckboxColumn("Aanwezig"),
-                        "Schoon/onbeschadigd": st.column_config.CheckboxColumn("Schoon/onbeschadigd"),
                         "Opmerking": st.column_config.TextColumn("Opmerking")
                     },
                     hide_index=True,
@@ -670,7 +668,7 @@ with form_tab:
                 afdeling = mat.get('afdeling', '')
                 ligplaats = mat.get('ligplaats', '')
                 if afdeling == 'Algemeen' and ligplaats == 'Algemeen':
-                    add_todo_action(f"Ligplaats controleren en aanpassen in TMS voor mat {i+1}.")
+                    add_todo_action(f"Ligplaats controleren en aanpassen in TMS voor mat {i+1} (nu: Algemeen/Algemeen).")
             
             data['matten_lijst'] = matten_lijst
             data['matten_opmerking'] = st.text_area("Opmerkingen over matten/ligplaatsen (optioneel)", key=f"matten_opmerking_1_{soort}")
@@ -716,13 +714,12 @@ with form_tab:
                             "Ligplaats": mat["ligplaats"],
                             "Aantal": mat["aantal"],
                             "Aanwezig": False,
-                            "Schoon/onbeschadigd": mat["schoon_onbeschadigd"],
                             "Vuilgraad": ""
                         })
                     if mat_data:
                         df = pd.DataFrame(mat_data)
-                        column_order = ["Afdeling", "Ligplaats", "Productomschrijving", "Aantal", "Vuilgraad", "Aanwezig", "Schoon/onbeschadigd"]
-                        columns_to_use = [col for col in column_order if col in df.columns]
+                        column_order = ["Afdeling", "Ligplaats", "Productomschrijving", "Aantal", "Vuilgraad", "Aanwezig"]
+                        columns_to_use = [col for col in column_order if col in df.columns and col != "Schoon/onbeschadigd"]
                         other_columns = [col for col in df.columns if col not in column_order]
                         final_column_order = columns_to_use + other_columns
                         df = df[final_column_order]
@@ -734,7 +731,6 @@ with form_tab:
                                 "Ligplaats": st.column_config.SelectboxColumn("Ligplaats", options=ligplaatsen, required=True),
                                 "Aantal": st.column_config.NumberColumn("Aantal", min_value=0),
                                 "Aanwezig": st.column_config.CheckboxColumn("Aanwezig"),
-                                "Schoon/onbeschadigd": st.column_config.CheckboxColumn("Schoon/onbeschadigd"),
                                 "Vuilgraad": st.column_config.SelectboxColumn("Vuilgraad", options=["", "Schoon", "Licht vervuild", "Sterk vervuild"], required=True)
                             },
                             hide_index=True,
@@ -748,7 +744,6 @@ with form_tab:
                                 mat["ligplaats"] = row["Ligplaats"]
                                 mat["aantal"] = row["Aantal"]
                                 mat["aanwezig"] = bool(row["Aanwezig"])
-                                mat["schoon_onbeschadigd"] = bool(row["Schoon/onbeschadigd"])
                                 mat["vuilgraad_label"] = row["Vuilgraad"]
                                 if row["Vuilgraad"] == "Schoon":
                                     mat["vuilgraad"] = 0
@@ -769,15 +764,14 @@ with form_tab:
                             "Barcode (eerste 7 cijfers)": mat.get("barcode", ""),
                             "Aantal": mat["aantal"],
                             "Aanwezig": False,
-                            "Schoon/onbeschadigd": mat["schoon_onbeschadigd"],
-                            "Vuilgraad": ""
+                            "Vuilgraad": mat.get("vuilgraad_label", "Licht vervuild")
                         })
                     if mat_data:
                         df = pd.DataFrame(mat_data)
                         # Leeftijd live berekenen uit barcode
                         df["Leeftijd"] = df["Barcode (eerste 7 cijfers)"].apply(lambda x: extract_mat_leeftijd(str(x)) if x else "-")
-                        column_order = ["Afdeling", "Ligplaats", "Productomschrijving", "Vuilgraad", "Barcode (eerste 7 cijfers)", "Leeftijd", "Aantal", "Aanwezig", "Schoon/onbeschadigd"]
-                        columns_to_use = [col for col in column_order if col in df.columns]
+                        column_order = ["Afdeling", "Ligplaats", "Productomschrijving", "Vuilgraad", "Barcode (eerste 7 cijfers)", "Leeftijd", "Aantal", "Aanwezig"]
+                        columns_to_use = [col for col in column_order if col in df.columns and col != "Schoon/onbeschadigd"]
                         other_columns = [col for col in df.columns if col not in column_order]
                         final_column_order = columns_to_use + other_columns
                         df = df[final_column_order]
@@ -791,7 +785,6 @@ with form_tab:
                                 "Leeftijd": st.column_config.TextColumn("Leeftijd", disabled=True),
                                 "Aantal": st.column_config.NumberColumn("Aantal", min_value=0),
                                 "Aanwezig": st.column_config.CheckboxColumn("Aanwezig"),
-                                "Schoon/onbeschadigd": st.column_config.CheckboxColumn("Schoon/onbeschadigd"),
                                 "Vuilgraad": st.column_config.SelectboxColumn("Vuilgraad", options=["Schoon", "Licht vervuild", "Sterk vervuild"], required=True)
                             },
                             hide_index=True,
@@ -806,7 +799,6 @@ with form_tab:
                                 mat["barcode"] = row["Barcode (eerste 7 cijfers)"]
                                 mat["aantal"] = row["Aantal"]
                                 mat["aanwezig"] = bool(row["Aanwezig"])
-                                mat["schoon_onbeschadigd"] = bool(row["Schoon/onbeschadigd"])
                                 mat["vuilgraad_label"] = row["Vuilgraad"]
                                 if row["Vuilgraad"] == "Schoon":
                                     mat["vuilgraad"] = 0
