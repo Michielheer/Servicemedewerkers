@@ -1044,5 +1044,20 @@ with data_tab:
                         })
             st.session_state['contactpersonen_df_orig'] = nieuw.copy()
             st.success("Wijzigingen gelogd en to-do's voor klantenservice toegevoegd!")
+        # Extra knop om alleen klantportaal to-do's te genereren
+        if st.button("Genereer to-do's voor klantenservice", key="genereer_ks_todo"):
+            nieuw = editable_df
+            if 'klantenservice_todo_list' not in st.session_state:
+                st.session_state['klantenservice_todo_list'] = []
+            for i, row in nieuw.iterrows():
+                gebruikersnaam = row.get('Klantenportaal_gebruikersnaam', None)
+                email = row.get('E-mailadres', '')
+                if not gebruikersnaam or str(gebruikersnaam).strip().lower() in ['none', '']:
+                    if not any(f"Uitnodigen klantportaal voor {email}" in t["text"] for t in st.session_state['klantenservice_todo_list']):
+                        st.session_state['klantenservice_todo_list'].append({
+                            "text": f"Uitnodigen klantportaal voor {email}",
+                            "done": False
+                        })
+            st.success("To-do's voor klantenservice gegenereerd!")
     else:
         st.info("Geen contactpersonen gevonden voor deze klant.")
