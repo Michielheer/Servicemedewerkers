@@ -30,7 +30,61 @@ import pytz
 # Nederlandse tijdzone
 nl_tz = pytz.timezone('Europe/Amsterdam')
 
+# Laad environment variables
+load_dotenv()
+
+# Supabase configuratie
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
 # --- Hulpfuncties
+
+def bereken_leeftijd(barcode):
+    if not barcode or len(str(barcode)) < 7:
+        return "-"
+    try:
+        barcode_str = str(barcode).strip()
+
+        # Zorg ervoor dat de barcode lang genoeg is
+        if len(barcode_str) >= 7:
+            maand_digit = barcode_str[4]
+            jaar_digits = barcode_str[5:7]
+
+            st.write(f"[DEBUG] Maand digit: {maand_digit}, Jaar digits: {jaar_digits}")
+
+            maand = int(maand_digit)
+            jaar = int(jaar_digits)
+
+            # Controleer maand en pas toe
+            if maand < 1 or maand > 12:
+                return f"Onbekend (maand {maand} ongeldig)"
+
+            # Bereken het volledige jaar (20xx)
+            volledig_jaar = 2000 + jaar
+
+            productie_datum = datetime(volledig_jaar, maand, 1)
+            vandaag = datetime.now()
+            leeftijd_dagen = (vandaag - productie_datum).days
+            leeftijd_maanden = leeftijd_dagen // 30
+
+            if leeftijd_maanden < 0:
+                return "Onbekend (toekomstige datum)"
+
+            if leeftijd_maanden < 12:
+                return f"{leeftijd_maanden} maanden"
+            else:
+                leeftijd_jaren = leeftijd_maanden // 12
+                resterende_maanden = leeftijd_maanden % 12
+                if resterende_maanden == 0:
+                    return f"{leeftijd_jaren} jaar"
+                else:
+                    return f"{leeftijd_jaren} jaar en {resterende_maanden} maanden"
+        else:
+            return "Onbekend (te kort)"
+    except Exception as e:
+        st.write(f"[DEBUG] Fout: {e}")
+        return f"Fout: {e}"
 
 def log_wijziging(relatienummer, klantnaam, soort_wijziging, productnummer, veld, oude_waarde, nieuwe_waarde, gewijzigd_door, opmerking=None):
     try:
@@ -113,7 +167,7 @@ def genereer_todo_list():
             add_todo_action(f"Specificeer afdeling en ligplaats voor mat '{mat_naam}' (nu: Algemeen/Algemeen)")
         # Jaarcheck logomatten: alleen voor logomatten
         if 'barcode' in mat and mat.get('barcode') and mat_naam.lower().startswith('logo'):
-            leeftijd_str = extract_mat_leeftijd(mat['barcode'])
+            leeftijd_str = bereken_leeftijd(mat['barcode'])
             # Zoek naar 'jaar' in de string en pak het getal
             match = re.search(r'(\d+) jaar', leeftijd_str)
             if match and int(match.group(1)) >= 3:
@@ -298,12 +352,6 @@ def markdown_to_pdf(markdown_text, title="Rapport"):
     # Return als bytes object, niet als string
     return pdf.output(dest='S').encode('latin1')
 
-# --- Supabase initialisatie ---
-load_dotenv()
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-
 # Configuratie
 st.set_page_config(
     page_title="Lavans Service App",
@@ -343,30 +391,75 @@ def init_state():
 
 def extract_mat_leeftijd(barcode):
     barcode = str(barcode).strip()
-    if not barcode or len(barcode) < 7:
+    st.write(f"[DEBUG] Barcode input: {barcode}")
+    if not barcode or len(barcode) < 4:
+        st.write("[DEBUG] Onbekend (te kort)")
         return "Onbekend (te kort)"
     try:
-        # Voor 7-cijferige barcodes: maand = pos 2-3, jaar = pos 4-5
-        maand = int(barcode[2:4])
-        jaar = int(barcode[4:6])
-        if maand < 1 or maand > 12:
-            return f"Onbekend (maand {maand} ongeldig)"
-        productie_datum = datetime.date(2000 + jaar, maand, 1)
-        leeftijd_dagen = (datetime.date.today() - productie_datum).days
-        leeftijd_maanden = leeftijd_dagen // 30
-        if leeftijd_maanden < 0:
-            return "Onbekend (toekomstige datum)"
-        if leeftijd_maanden < 12:
-            return f"{leeftijd_maanden} maanden"
-        else:
-            leeftijd_jaren = leeftijd_maanden // 12
-            resterende_maanden = leeftijd_maanden % 12
-            if resterende_maanden == 0:
-                return f"{leeftijd_jaren} jaar"
+        barcode_str = str(barcode).strip()
+        
+        # Voor het formaat "0300522":
+        # 03 = artikel/mat type (niet relevant voor datum)
+        # 00 = niet relevant voor datum
+        # 5 = mei (maand)
+        # 22 = 2022 (jaar)
+        
+        # Haal het laatste cijfer op voor de maand (5)
+        # en de laatste twee cijfers voor het jaar (22)
+        if len(barcode_str) >= 3:
+            maand_digit = barcode_str[-3]
+            jaar_digits = barcode_str[-2:]
+            
+            maand = int(maand_digit)
+            jaar = int(jaar_digits)
+            
+            # Controleer maand en pas toe
+            if maand < 1 or maand > 12:
+                return f"Onbekend (maand {maand} ongeldig)"
+            
+            # Bereken het volledige jaar (20xx)
+            volledig_jaar = 2000 + jaar
+            
+            productie_datum = datetime.date(volledig_jaar, maand, 1)
+            leeftijd_dagen = (datetime.date.today() - productie_datum).days
+            leeftijd_maanden = leeftijd_dagen // 30
+            
+            if leeftijd_maanden < 0:
+                return "Onbekend (toekomstige datum)"
+                
+            if leeftijd_maanden < 12:
+                return f"{leeftijd_maanden} maanden"
             else:
-                return f"{leeftijd_jaren} jaar en {resterende_maanden} maanden"
+                leeftijd_jaren = leeftijd_maanden // 12
+                resterende_maanden = leeftijd_maanden % 12
+                if resterende_maanden == 0:
+                    return f"{leeftijd_jaren} jaar"
+                else:
+                    return f"{leeftijd_jaren} jaar en {resterende_maanden} maanden"
+        else:
+            return "Onbekend (te kort)"
     except Exception as e:
+        st.write(f"[DEBUG] Fout: {e}")
         return f"Onbekend (fout: {e})"
+    
+def log_inspectie_to_db(relatienummer, klantnaam, contactpersoon, contact_email, inspecteur, datum, tijd, matten_data, wissers_data):
+    try:
+        entry = {
+            "relatienummer": relatienummer,
+            "klantnaam": klantnaam,
+            "contactpersoon": contactpersoon,
+            "contact_email": contact_email,
+            "inspecteur": inspecteur,
+            "datum": str(datum),
+            "tijd": tijd,
+            "matten_data": matten_data,
+            "wissers_data": wissers_data
+        }
+        supabase.table("service_inspecties").insert(entry).execute()
+        st.success("Inspectie succesvol gelogd in database!")
+    except Exception as e:
+        st.error(f"Fout bij loggen inspectie: {e}")
+
 
 def get_download_link(content, filename, text, is_pdf=False):
     """Genereer een downloadlink voor de gegeven inhoud."""
@@ -512,8 +605,8 @@ contactpersoon_str = ", ".join(contactpersonen_lijst) if contactpersonen_lijst e
 
 # --- Voeg tabs toe voor formulier en rapportage ---
 # Toon Inspectieformulier, To-do lijst én Contactpersoon aanpassing
-tabs = ["📝 Inspectieformulier", "📝 To-do lijst", "👤 Contactpersoon aanpassing"]
-form_tab, todo_tab, data_tab = st.tabs(tabs)
+tabs = ["📝 Inspectieformulier", "📝 To-do lijst", "👤 Contactpersoon aanpassing", "📊 Rapportage"]
+form_tab, todo_tab, data_tab, rapportage_tab = st.tabs(tabs)
 
 with form_tab:
     # --- Contactpersoon selectie als eerste vraag ---
@@ -616,19 +709,18 @@ with form_tab:
             afdelingen = sorted([a for a in wissers_afdelingen if a])
             ligplaatsen = sorted([l for l in wissers_ligplaatsen if l])
 
-            # Wissers tabel (zelfde opzet als matten)
+            # Nieuwe verbeterde wissers tabel met aantal aanwezig en aantal vuil
             st.markdown("### Wissers overzicht")
             wissers_data = []
             for wisser in wissers_abos:
                 wissers_data.append({
                     "Type wisser": wisser.get("productomschrijving", ""),
-                    "Aantal": wisser.get("aantal", 0),
-                    "Aanwezig": False,
-                    "Opmerking": ""
+                    "Aantal aanwezig": wisser.get("aantal", 0),
+                    "Aantal vuil": 0
                 })
             if wissers_data:
                 wissers_df = pd.DataFrame(wissers_data)
-                column_order = ["Type wisser", "Aantal", "Aanwezig", "Opmerking"]
+                column_order = ["Type wisser", "Aantal aanwezig", "Aantal vuil"]
                 columns_to_use = [col for col in column_order if col in wissers_df.columns]
                 other_columns = [col for col in wissers_df.columns if col not in column_order]
                 final_column_order = columns_to_use + other_columns
@@ -637,9 +729,8 @@ with form_tab:
                     wissers_df,
                     column_config={
                         "Type wisser": st.column_config.TextColumn("Type wisser", disabled=True),
-                        "Aantal": st.column_config.NumberColumn("Aantal", min_value=0),
-                        "Aanwezig": st.column_config.CheckboxColumn("Aanwezig"),
-                        "Opmerking": st.column_config.TextColumn("Opmerking")
+                        "Aantal aanwezig": st.column_config.NumberColumn("Aantal aanwezig", min_value=0),
+                        "Aantal vuil": st.column_config.NumberColumn("Aantal vuil", min_value=0)
                     },
                     hide_index=True,
                     num_rows="dynamic",
@@ -755,6 +846,7 @@ with form_tab:
                     st.markdown("#### Logomatten")
                     mat_data = []
                     for i, mat in enumerate(st.session_state.logomatten_lijst):
+                        leeftijd = bereken_leeftijd(mat.get("barcode", ""))
                         mat_data.append({
                             "Productomschrijving": mat["mat_type"],
                             "Afdeling": mat["afdeling"],
@@ -762,24 +854,37 @@ with form_tab:
                             "Barcode (eerste 7 cijfers)": mat.get("barcode", ""),
                             "Aantal": mat["aantal"],
                             "Aanwezig": False,
-                            "Vuilgraad": ""
+                            "Vuilgraad": "",
+                            "Leeftijd": leeftijd
                         })
+                        # Controleer of de mat ouder is dan 4 jaar
+                        if "jaar" in leeftijd and int(leeftijd.split()[0]) > 4:
+                            st.warning(f"Mat {mat['mat_type']} is ouder dan 4 jaar.")
+                            representativiteit = st.slider("Hoe representatief is de mat nog voor de klant? (1-10)", 1, 10, key=f"representativiteit_{i}")
+                            logo_correct = st.radio("Klopt het logo?", ["Ja", "Nee"], key=f"logo_correct_{i}")
+                            scheuren = st.radio("Zitten er scheuren in?", ["Ja", "Nee"], key=f"scheuren_{i}")
+                            if representativiteit < 5:
+                                st.error("Overweeg om de mat te vervangen.")
+
                     if mat_data:
                         df = pd.DataFrame(mat_data)
-                        # Leeftijd live berekenen uit barcode
-                        df["Leeftijd"] = df["Barcode (eerste 7 cijfers)"].apply(lambda x: extract_mat_leeftijd(str(x)) if x else "-")
                         column_order = ["Afdeling", "Ligplaats", "Productomschrijving", "Vuilgraad", "Barcode (eerste 7 cijfers)", "Leeftijd", "Aantal", "Aanwezig"]
-                        columns_to_use = [col for col in column_order if col in df.columns and col != "Schoon/onbeschadigd"]
+                        columns_to_use = [col for col in column_order if col in df.columns]
                         other_columns = [col for col in df.columns if col not in column_order]
                         final_column_order = columns_to_use + other_columns
                         df = df[final_column_order]
+
                         edited_df = st.data_editor(
                             df,
                             column_config={
                                 "Productomschrijving": st.column_config.TextColumn("Productomschrijving", disabled=True),
                                 "Afdeling": st.column_config.SelectboxColumn("Afdeling", options=afdelingen, required=True),
                                 "Ligplaats": st.column_config.SelectboxColumn("Ligplaats", options=ligplaatsen, required=True),
-                                "Barcode (eerste 7 cijfers)": st.column_config.TextColumn("Barcode (eerste 7 cijfers)", help="Vul de eerste 7 cijfers in (bijv. 0200720 voor juni 2020)"),
+                                "Barcode (eerste 7 cijfers)": st.column_config.TextColumn(
+                                    "Barcode (eerste 7 cijfers)", 
+                                    help="Vul barcode in (bijv. 0300522 voor mei 2022, waarbij 5=mei en 22=jaar 2022)",
+                                    max_chars=7
+                                ),
                                 "Leeftijd": st.column_config.TextColumn("Leeftijd", disabled=True),
                                 "Aantal": st.column_config.NumberColumn("Aantal", min_value=0),
                                 "Aanwezig": st.column_config.CheckboxColumn("Aanwezig"),
@@ -789,6 +894,8 @@ with form_tab:
                             num_rows="dynamic",
                             key=f"logomatten_editor_{soort}"
                         )
+
+                        # Update leeftijd wanneer barcode is gewijzigd
                         if edited_df is not None:
                             for i, row in edited_df.iterrows():
                                 mat = st.session_state.logomatten_lijst[i]
@@ -804,6 +911,12 @@ with form_tab:
                                     mat["vuilgraad"] = 1
                                 else:
                                     mat["vuilgraad"] = 2
+
+                                # Update leeftijd in de tabel
+                                if mat["barcode"]:
+                                    leeftijd = bereken_leeftijd(mat["barcode"])
+                                    edited_df.at[i, "Leeftijd"] = leeftijd
+                                    st.write(f"[DEBUG] Leeftijd voor barcode {mat['barcode']}: {leeftijd}")
 
             data['fotos'] = st.file_uploader("Upload foto's van matten en locaties", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key=f"fotos_{soort}")
             if data['fotos']:
@@ -834,15 +947,6 @@ with form_tab:
                 matten_data = inspectieformulier("Matten", matten_abos, "matten_fotos")
             if wissers_abos:
                 wissers_data = inspectieformulier("Wissers", wissers_abos, "wissers_fotos")
-
-    if st.button("Genereer Rapport"):
-        st.session_state.matten_data = matten_data
-        st.session_state.wissers_data = wissers_data
-        st.session_state.inspecteur_naam = inspecteur_naam
-        st.session_state.inspectie_datum = inspectie_datum
-        st.session_state.inspectie_tijd = inspectie_tijd
-        st.session_state.rapport_gegenereerd = True
-        genereer_todo_list()
 
     if st.button("Genereer To-do's op basis van huidige data"):
         st.session_state['todo_list'] = []  # Leegmaken, zodat alleen actuele to-do's blijven
@@ -883,6 +987,19 @@ with form_tab:
             )
         
         st.success("Alle wijzigingen zijn gelogd!")
+
+        # --- Log inspectie in database ---
+        log_inspectie_to_db(
+            relatienummer=relatienummer,
+            klantnaam=klantnaam,
+            contactpersoon=contact_naam,
+            contact_email=contact_email,
+            inspecteur=inspecteur_naam,
+            datum=inspectie_datum,
+            tijd=inspectie_tijd,
+            matten_data=matten_data,
+            wissers_data=wissers_data
+        )
 
 with todo_tab:
     st.header("To-do lijst voor servicemedewerkers")
@@ -960,12 +1077,6 @@ def export_wijzigingen_log():
             
     except Exception as e:
         st.error(f"Fout bij exporteren van wijzigingen: {e}")
-
-# Voeg een tabblad toe voor het exporteren van wijzigingen
-with st.sidebar:
-    st.markdown("---")
-    st.subheader("Wijzigingen Log")
-    export_wijzigingen_log()
 
 # --- Contactpersoon aanpassing tabblad ---
 with data_tab:
@@ -1070,3 +1181,37 @@ with data_tab:
             st.success("To-do's voor klantenservice gegenereerd!")
     else:
         st.info("Geen contactpersonen gevonden voor deze klant.")
+
+# Voeg een nieuw tabblad toe voor rapportage
+with rapportage_tab:
+    st.header("Management Rapportage")
+
+    # Haal gegevens op uit de database
+    try:
+        response = supabase.table("service_inspecties").select("*").execute()
+        inspecties = response.data
+
+        # Controleer of er gegevens zijn
+        if inspecties:
+            # Tel het aantal bezoeken
+            totaal_bezoeken = len(inspecties)
+            st.write(f"Totaal aantal bezoeken: {totaal_bezoeken}")
+
+            # Voorbeeld: Aantal bezoeken per inspecteur
+            inspecteur_data = {}
+            for inspectie in inspecties:
+                inspecteur = inspectie['inspecteur']
+                if inspecteur in inspecteur_data:
+                    inspecteur_data[inspecteur] += 1
+                else:
+                    inspecteur_data[inspecteur] = 1
+
+            # Visualiseer het aantal bezoeken per inspecteur
+            st.bar_chart(inspecteur_data)
+
+        else:
+            st.info("Geen inspectiegegevens beschikbaar.")
+
+    except Exception as e:
+        st.error(f"Fout bij ophalen van gegevens: {e}")
+
