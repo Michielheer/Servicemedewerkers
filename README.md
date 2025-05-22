@@ -1,41 +1,53 @@
 # Lavans Service App
 
-Een Streamlit-applicatie voor servicemedewerkers van Lavans om matten en wissers te inspecteren.
+Een Streamlit-applicatie voor servicemedewerkers om inspecties voor matten en wissers te registreren.
 
 ## Functionaliteiten
 
-- Selecteren van klanten op basis van relatienummer
-- Automatisch ophalen van contactpersonen
 - Inspectieformulier voor matten en wissers
-- Gedetailleerde registratie van vuilgraad per mat/wisser
-- AI-gegenereerde rapportage
-- PDF/HTML export van rapporten
+- Contactpersoon beheer
+- To-do lijst voor servicemedewerkers
+- Management rapportage
+- Automatische logging van wijzigingen
+- PDF rapport generatie
 
 ## Installatie
 
-1. Clone deze repository
-2. Installeer de vereiste packages:
-   ```
-   pip install -r requirements.txt
-   ```
-3. Maak een `.env` bestand met de volgende variabelen:
-   ```
-   SUPABASE_URL=jouw_supabase_url
-   SUPABASE_KEY=jouw_supabase_key
-   OPENAI_API_KEY=jouw_openai_api_key
-   ```
-4. Start de app:
-   ```
-   streamlit run app.py
-   ```
+1. Clone de repository:
+```bash
+git clone [repository-url]
+```
 
-## Deployment
+2. Installeer de benodigde packages:
+```bash
+pip install -r requirements.txt
+```
 
-Deze app kan worden gedeployed via Streamlit Cloud of op een eigen server.
+3. Maak een `.env` bestand aan met de volgende variabelen:
+```
+SUPABASE_URL=jouw_supabase_url
+SUPABASE_KEY=jouw_supabase_key
+```
 
-## Ontwikkeld door
+## Gebruik
 
-Michiel Heerkens voor Lavans
+Start de applicatie met:
+```bash
+streamlit run app.py
+```
+
+## Dependencies
+
+- streamlit
+- pandas
+- supabase
+- python-dotenv
+- fpdf
+- openai
+
+## Licentie
+
+Dit project is eigendom van Lavans
 
 ```python
 import login

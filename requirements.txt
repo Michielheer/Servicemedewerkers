@@ -1,7 +1,8 @@
 streamlit==1.32.0
-pandas
-python-dotenv
-supabase
-openai
-fpdf
+pandas==2.2.1
+python-dotenv==1.0.1
+supabase==2.3.4
+fpdf==1.7.2
+openai==1.12.0
+pytz==2024.1
 datetime
