@@ -6,4 +6,5 @@ httpx==0.27.0
 fpdf==1.7.2
 openai==1.12.0
 pytz==2024.1
-datetime
+requests==2.31.0
+urllib3==2.2.1
