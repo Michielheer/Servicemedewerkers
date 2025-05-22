@@ -246,7 +246,9 @@ def save_contact_wijzigingen(updated_df, relatienummer, gewijzigd_door="onbekend
                 "actie": "toegevoegd" if is_nieuw else "gewijzigd",
                 "verwijderd_op": datetime.now(nl_tz).isoformat(),
                 "verwijderd_door": gewijzigd_door,
-                "routecontact": bool_to_ja_nee(row.get("Routecontact", False))
+                "routecontact": bool_to_ja_nee(row.get("Routecontact", False)),
+                "actief": bool_to_ja_nee(row.get("Actief", "Nee")),
+                "nog_in_dienst": bool_to_ja_nee(row.get("Nog_in_dienst", "Nee"))
             }
             supabase.table("contactpersonen_log").insert(log_entry).execute()
 
@@ -295,7 +297,9 @@ def save_contact_wijzigingen(updated_df, relatienummer, gewijzigd_door="onbekend
                     "actie": "verwijderd",
                     "verwijderd_op": datetime.now(nl_tz).isoformat(),
                     "verwijderd_door": gewijzigd_door,
-                    "routecontact": bool_to_ja_nee(contact.get("Routecontact", False))
+                    "routecontact": bool_to_ja_nee(contact.get("Routecontact", False)),
+                    "actief": bool_to_ja_nee(contact.get("Actief", "Nee")),
+                    "nog_in_dienst": bool_to_ja_nee(contact.get("Nog_in_dienst", "Nee"))
                 }
                 supabase.table("contactpersonen_log").insert(log_entry).execute()
 
@@ -1234,6 +1238,9 @@ with data_tab:
                 
                 nog_in_dienst = st.checkbox("Nog in dienst", value=ja_nee_checkbox(contact.get('Actief', 'Ja')), key=f"nog_in_dienst_{idx}")
                 routecontact = st.checkbox("Routecontact (op de hoogte houden van leveringswijzigingen)", value=ja_nee_checkbox(contact.get('Routecontact', 'Nee')), key=f"routecontact_{idx}")
+                
+                toegang_klantportaal = ja_nee_checkbox(contact.get('Actief', 'Ja')) and bool(str(contact.get('Klantenportaal_gebruikersnaam', '')).strip())
+                st.checkbox("Toegang klantportaal", value=toegang_klantportaal, key=f"toegang_klantportaal_{idx}", disabled=True)
                 
                 # Sla de gewijzigde gegevens op in de originele data
                 contactpersonen_data[idx].update({
