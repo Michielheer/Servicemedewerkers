@@ -116,17 +116,34 @@ def vergelijk_en_log_wijzigingen(oud_data, nieuw_data, relatienummer, klantnaam,
         for item in nieuw_data:
             productnummer = item.get('productnummer', '')
             for veld, nieuwe_waarde in item.items():
+                # Converteer boolean-waarden naar strings voor vergelijking
+                if isinstance(nieuwe_waarde, bool):
+                    nieuwe_waarde = bool_to_ja_nee(nieuwe_waarde)
+                
                 oud_item = next((x for x in oud_data if x.get('productnummer') == productnummer), None)
                 oude_waarde = oud_item.get(veld, '') if oud_item else ''
+                
+                # Converteer oude boolean-waarden naar strings voor vergelijking
+                if isinstance(oude_waarde, bool):
+                    oude_waarde = bool_to_ja_nee(oude_waarde)
+                
                 if str(oude_waarde) != str(nieuwe_waarde):
+                    # Voor het loggen naar de database, converteer terug naar boolean als het een boolean veld is
+                    if veld in ['aanwezig', 'schoon_onbeschadigd', 'routecontact', 'nog_in_dienst']:
+                        nieuwe_waarde_db = to_bool(nieuwe_waarde)
+                        oude_waarde_db = to_bool(oude_waarde)
+                    else:
+                        nieuwe_waarde_db = nieuwe_waarde
+                        oude_waarde_db = oude_waarde
+                    
                     log_wijziging(
                         relatienummer=relatienummer,
                         klantnaam=klantnaam,
                         soort_wijziging=soort_wijziging,
                         productnummer=productnummer,
                         veld=veld,
-                        oude_waarde=oude_waarde,
-                        nieuwe_waarde=nieuwe_waarde,
+                        oude_waarde=oude_waarde_db,
+                        nieuwe_waarde=nieuwe_waarde_db,
                         gewijzigd_door=gewijzigd_door
                     )
         return True
@@ -135,10 +152,35 @@ def vergelijk_en_log_wijzigingen(oud_data, nieuw_data, relatienummer, klantnaam,
         return False
     
 def ja_nee_checkbox(val):
-    return str(val).strip().lower() == 'ja'
+    """Converteert een waarde naar een boolean voor gebruik in een checkbox."""
+    return to_bool(val)
 
 def bool_to_ja_nee(val):
-    return 'Ja' if val else 'Nee'
+    """Converteert een boolean naar 'Ja' of 'Nee'."""
+    return "Ja" if val else "Nee"
+
+def to_bool(val):
+    """Converteert verschillende waarden naar een boolean.
+    
+    Args:
+        val: De waarde die geconverteerd moet worden naar een boolean.
+            Kan zijn: bool, str, int, of None.
+    
+    Returns:
+        bool: True of False
+    """
+    if isinstance(val, bool):
+        return val
+    if isinstance(val, str):
+        v = val.strip().lower()
+        if v in ["true", "ja", "1", "yes"]:
+            return True
+        if v in ["false", "nee", "0", "no", ""]:
+            return False
+        return False
+    if isinstance(val, int):
+        return val == 1
+    return False
 
 def add_todo_action(text):
     """Voeg een to-do toe aan de lijst van servicemedewerkers."""
@@ -220,19 +262,22 @@ def save_contact_wijzigingen(updated_df, relatienummer, gewijzigd_door="onbekend
         db_emails = set([c.get("E-mailadres", "") for c in db_contacts if c.get("E-mailadres")])
         table_emails = set(updated_df["E-mailadres"].dropna().astype(str))
 
+        # Verwerk nieuwe en gewijzigde contactpersonen
         for _, row in updated_df.iterrows():
             if not row["E-mailadres"]:
                 continue
-            nog_in_dienst = row.get("Nog_in_dienst", True)
 
             # Zoek matching contact op basis van naamvelden
             match_contact = next((c for c in db_contacts if
-                                  str(c.get("Voornaam", "")).strip() == str(row["Voornaam"]).strip() and
-                                  str(c.get("Tussenvoegsel", "")).strip() == str(row["Tussenvoegsel"]).strip() and
-                                  str(c.get("Achternaam", "")).strip() == str(row["Achternaam"]).strip()), None)
+                                str(c.get("Voornaam", "")).strip() == str(row["Voornaam"]).strip() and
+                                str(c.get("Tussenvoegsel", "")).strip() == str(row["Tussenvoegsel"]).strip() and
+                                str(c.get("Achternaam", "")).strip() == str(row["Achternaam"]).strip()), None)
 
             is_nieuw = match_contact is None
+            nog_in_dienst = to_bool(row.get("Nog_in_dienst", "Nee"))
+            routecontact = to_bool(row.get("Routecontact", False))
 
+            # Log de wijziging in de database
             log_entry = {
                 "relatienummer": str(relatienummer),
                 "email": row["E-mailadres"],
@@ -242,13 +287,11 @@ def save_contact_wijzigingen(updated_df, relatienummer, gewijzigd_door="onbekend
                 "functie": "",
                 "telefoonnummer": row["Telefoonnummer"],
                 "klantenportaal_gebruikersnaam": row["Klantenportaal_gebruikersnaam"],
-                "nog_in_dienst": bool_to_ja_nee(nog_in_dienst),
+                "nog_in_dienst": to_bool(row.get("Nog_in_dienst", "Nee")),
                 "actie": "toegevoegd" if is_nieuw else "gewijzigd",
                 "verwijderd_op": datetime.now(nl_tz).isoformat(),
                 "verwijderd_door": gewijzigd_door,
-                "routecontact": bool_to_ja_nee(row.get("Routecontact", False)),
-                "actief": bool_to_ja_nee(row.get("Actief", "Nee")),
-                "nog_in_dienst": bool_to_ja_nee(row.get("Nog_in_dienst", "Nee"))
+                "routecontact": to_bool(row.get("Routecontact", False))
             }
             supabase.table("contactpersonen_log").insert(log_entry).execute()
 
@@ -260,8 +303,8 @@ def save_contact_wijzigingen(updated_df, relatienummer, gewijzigd_door="onbekend
                     wijzigingen = []
                     for veld in ["Voornaam", "Tussenvoegsel", "Achternaam", "Telefoonnummer", "Klantenportaal_gebruikersnaam", "E-mailadres", "Routecontact"]:
                         if veld == "Routecontact":
-                            oud_bool = ja_nee_checkbox(match_contact.get(veld, 'Nee'))
-                            nieuw_bool = ja_nee_checkbox(row[veld])
+                            oud_bool = to_bool(match_contact.get(veld, False))
+                            nieuw_bool = to_bool(row[veld])
                             if not oud_bool and nieuw_bool:
                                 add_klantenservice_todo(f"Contactpersoon {format_naam(row['Voornaam'], row['Tussenvoegsel'], row['Achternaam'])} ({row['E-mailadres']}) is nu Routecontact (op de hoogte houden van leveringswijzigingen).")
                                 st.experimental_rerun()
@@ -293,13 +336,11 @@ def save_contact_wijzigingen(updated_df, relatienummer, gewijzigd_door="onbekend
                     "functie": contact.get("Functie", ""),
                     "telefoonnummer": contact.get("Telefoonnummer", ""),
                     "klantenportaal_gebruikersnaam": contact.get("Klantenportaal_gebruikersnaam", ""),
-                    "nog_in_dienst": bool_to_ja_nee(contact.get("Nog_in_dienst", True)),
+                    "nog_in_dienst": to_bool(contact.get("Nog_in_dienst", "Nee")),
                     "actie": "verwijderd",
                     "verwijderd_op": datetime.now(nl_tz).isoformat(),
                     "verwijderd_door": gewijzigd_door,
-                    "routecontact": bool_to_ja_nee(contact.get("Routecontact", False)),
-                    "actief": bool_to_ja_nee(contact.get("Actief", "Nee")),
-                    "nog_in_dienst": bool_to_ja_nee(contact.get("Nog_in_dienst", "Nee"))
+                    "routecontact": to_bool(contact.get("Routecontact", False))
                 }
                 supabase.table("contactpersonen_log").insert(log_entry).execute()
 
@@ -493,6 +534,20 @@ def extract_mat_leeftijd(barcode):
     
 def log_inspectie_to_db(relatienummer, klantnaam, contactpersoon, contact_email, inspecteur, datum, tijd, matten_data, wissers_data):
     try:
+        # Converteer alle boolean-waarden in matten_data
+        if matten_data:
+            for mat in matten_data.get('matten_lijst', []):
+                if 'aanwezig' in mat:
+                    mat['aanwezig'] = to_bool(mat['aanwezig'])
+                if 'schoon_onbeschadigd' in mat:
+                    mat['schoon_onbeschadigd'] = to_bool(mat['schoon_onbeschadigd'])
+
+        # Converteer alle boolean-waarden in wissers_data
+        if wissers_data:
+            for wisser in wissers_data.get('wissers_tabel', []):
+                if 'In goede staat' in wisser:
+                    wisser['In goede staat'] = to_bool(wisser['In goede staat'])
+
         entry = {
             "relatienummer": relatienummer,
             "klantnaam": klantnaam,
@@ -1236,10 +1291,10 @@ with data_tab:
                     telefoon = st.text_input("Telefoonnummer", value=contact.get('Telefoonnummer', ''), key=f"telefoon_{idx}")
                     klantenportaal = st.text_input("Klantenportaal gebruikersnaam", value=contact.get('Klantenportaal_gebruikersnaam', ''), key=f"klantenportaal_{idx}")
                 
-                nog_in_dienst = st.checkbox("Nog in dienst", value=ja_nee_checkbox(contact.get('Actief', 'Ja')), key=f"nog_in_dienst_{idx}")
-                routecontact = st.checkbox("Routecontact (op de hoogte houden van leveringswijzigingen)", value=ja_nee_checkbox(contact.get('Routecontact', 'Nee')), key=f"routecontact_{idx}")
+                nog_in_dienst = st.checkbox("Nog in dienst", value=to_bool(contact.get('Actief', 'Ja')), key=f"nog_in_dienst_{idx}")
+                routecontact = st.checkbox("Routecontact (op de hoogte houden van leveringswijzigingen)", value=to_bool(contact.get('Routecontact', 'Nee')), key=f"routecontact_{idx}")
                 
-                toegang_klantportaal = ja_nee_checkbox(contact.get('Actief', 'Ja')) and bool(str(contact.get('Klantenportaal_gebruikersnaam', '')).strip())
+                toegang_klantportaal = to_bool(contact.get('Actief', 'Ja')) and bool(str(contact.get('Klantenportaal_gebruikersnaam', '')).strip())
                 st.checkbox("Toegang klantportaal", value=toegang_klantportaal, key=f"toegang_klantportaal_{idx}", disabled=True)
                 
                 # Sla de gewijzigde gegevens op in de originele data
@@ -1250,9 +1305,9 @@ with data_tab:
                     'E-mailadres': email,
                     'Telefoonnummer': telefoon,
                     'Klantenportaal_gebruikersnaam': klantenportaal,
-                    'Actief': bool_to_ja_nee(nog_in_dienst),
-                    'Nog_in_dienst': bool_to_ja_nee(nog_in_dienst),
-                    'Routecontact': bool_to_ja_nee(routecontact)
+                    'Actief': to_bool(nog_in_dienst),
+                    'Nog_in_dienst': to_bool(nog_in_dienst),
+                    'Routecontact': to_bool(routecontact)
                 })
 
         # Knop om nieuwe contactpersoon toe te voegen
@@ -1351,6 +1406,13 @@ def to_bool(val):
     return False
 
 # Helper om Ja/Nee te verwerken
+def ja_nee_naar_bool(val):
+    return str(val).strip().lower() == 'ja'
+
+# Stel je hebt een dict contact:
+contact['Actief'] = ja_nee_naar_bool(contact.get('Actief', 'Nee'))
+contact['Nog_in_dienst'] = ja_nee_naar_bool(contact.get('Nog_in_dienst', 'Nee'))
+contact['Routecontact'] = ja_nee_naar_bool(contact.get('Routecontact', 'Nee'))
 
 
 
