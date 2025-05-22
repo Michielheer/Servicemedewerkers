@@ -108,7 +108,9 @@ def log_wijziging(relatienummer, klantnaam, soort_wijziging, productnummer, veld
         response = supabase.table("service_wijzigingen_log").insert(log_entry).execute()
         return True
     except Exception as e:
-        st.error(f"Fout bij loggen van wijziging: {e}")
+        error_msg = str(e).strip()
+        if error_msg and error_msg != "{}":
+            st.error(f"Fout bij loggen van wijziging: {error_msg}")
         return False
 
 def vergelijk_en_log_wijzigingen(oud_data, nieuw_data, relatienummer, klantnaam, soort_wijziging, gewijzigd_door):
@@ -195,6 +197,25 @@ def add_klantenservice_todo(text):
         st.session_state['klantenservice_todo_list'] = []
     if not any(todo['text'] == text for todo in st.session_state['klantenservice_todo_list']):
         st.session_state['klantenservice_todo_list'].append({"text": text, "done": False})
+
+def save_klantenservice_todos(relatienummer, klantnaam, todos, gewijzigd_door):
+    """Sla klantenservice to-do's op in de database."""
+    try:
+        for todo in todos:
+            todo_entry = {
+                "relatienummer": str(relatienummer),
+                "klantnaam": klantnaam,
+                "todo_tekst": todo["text"],
+                "status": "nieuw",
+                "aangemaakt_op": datetime.now(nl_tz).isoformat(),
+                "aangemaakt_door": gewijzigd_door,
+                "afgehandeld": False
+            }
+            supabase.table("klantenservice_todos").insert(todo_entry).execute()
+        return True
+    except Exception as e:
+        st.error(f"Fout bij opslaan klantenservice to-do's: {e}")
+        return False
 
 def vuilgraad_visualisatie(vuilgraad_label):
     if vuilgraad_label == "Schoon":
@@ -1145,6 +1166,13 @@ with form_tab:
                 soort_wijziging='toebehoren',
                 gewijzigd_door=inspecteur_naam
             )
+        
+        # Sla klantenservice to-do's op
+        if 'klantenservice_todo_list' in st.session_state and st.session_state['klantenservice_todo_list']:
+            if save_klantenservice_todos(relatienummer, klantnaam, st.session_state['klantenservice_todo_list'], inspecteur_naam):
+                st.success("Alle to-do's zijn opgeslagen in de database!")
+                # Reset de to-do lijst na succesvol opslaan
+                st.session_state['klantenservice_todo_list'] = []
         
         st.success("Alle wijzigingen zijn gelogd!")
 
