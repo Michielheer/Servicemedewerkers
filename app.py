@@ -258,6 +258,7 @@ def genereer_todo_list():
 
 def save_contact_wijzigingen(updated_df, relatienummer, gewijzigd_door="onbekend"):
     try:
+        # Haal bestaande contactpersonen uit de database
         db_contacts = supabase.table("RelatiesImport").select("*").eq("Relatienummer", str(relatienummer)).execute().data
         db_emails = set([c.get("E-mailadres", "") for c in db_contacts if c.get("E-mailadres")])
         table_emails = set(updated_df["E-mailadres"].dropna().astype(str))
@@ -277,6 +278,27 @@ def save_contact_wijzigingen(updated_df, relatienummer, gewijzigd_door="onbekend
             nog_in_dienst = to_bool(row.get("Nog_in_dienst", "Nee"))
             routecontact = to_bool(row.get("Routecontact", False))
 
+            # Bereid de data voor om in RelatiesImport te zetten
+            contact_data = {
+                "Relatienummer": str(relatienummer),
+                "Voornaam": row["Voornaam"],
+                "Tussenvoegsel": row["Tussenvoegsel"],
+                "Achternaam": row["Achternaam"],
+                "E-mailadres": row["E-mailadres"],
+                "Telefoonnummer": row["Telefoonnummer"],
+                "Klantenportaal_gebruikersnaam": row["Klantenportaal_gebruikersnaam"],
+                "Actief": nog_in_dienst,
+                "Nog_in_dienst": nog_in_dienst,
+                "Routecontact": routecontact
+            }
+
+            if is_nieuw:
+                # Nieuwe contactpersoon toevoegen
+                supabase.table("RelatiesImport").insert(contact_data).execute()
+            else:
+                # Bestaande contactpersoon updaten
+                supabase.table("RelatiesImport").update(contact_data).eq("E-mailadres", row["E-mailadres"]).execute()
+
             # Log de wijziging in de database
             log_entry = {
                 "relatienummer": str(relatienummer),
@@ -284,16 +306,15 @@ def save_contact_wijzigingen(updated_df, relatienummer, gewijzigd_door="onbekend
                 "voornaam": row["Voornaam"],
                 "tussenvoegsel": row["Tussenvoegsel"],
                 "achternaam": row["Achternaam"],
-                "functie": "",
                 "telefoonnummer": row["Telefoonnummer"],
                 "klantenportaal_gebruikersnaam": row["Klantenportaal_gebruikersnaam"],
-                "nog_in_dienst": to_bool(row.get("Nog_in_dienst", "Nee")),
+                "nog_in_dienst": nog_in_dienst,
                 "actie": "toegevoegd" if is_nieuw else "gewijzigd",
-                "verwijderd_op": datetime.now(nl_tz).isoformat(),
-                "verwijderd_door": gewijzigd_door,
-                "routecontact": to_bool(row.get("Routecontact", False))
+                "gewijzigd_op": datetime.now(nl_tz).isoformat(),
+                "gewijzigd_door": gewijzigd_door,
+                "routecontact": routecontact
             }
-            supabase.table("contactpersonen_log").insert(log_entry).execute()
+            supabase.table("service_wijzigingen_log").insert(log_entry).execute()
 
             if nog_in_dienst:
                 if is_nieuw:
@@ -323,28 +344,35 @@ def save_contact_wijzigingen(updated_df, relatienummer, gewijzigd_door="onbekend
                         add_klantenservice_todo(f"Contactpersoon gewijzigd: {format_naam(row['Voornaam'], row['Tussenvoegsel'], row['Achternaam'])} ({row['E-mailadres']}) – {wijziging_tekst}")
                         st.rerun()
 
+        # Verwijder contactpersonen die niet meer in de lijst staan
         to_delete = db_emails - table_emails
         for contact in db_contacts:
             email = contact.get("E-mailadres", "")
             if email in to_delete:
+                # Log de verwijdering
                 log_entry = {
                     "relatienummer": str(relatienummer),
                     "email": email,
                     "voornaam": contact.get("Voornaam", ""),
                     "tussenvoegsel": contact.get("Tussenvoegsel", ""),
                     "achternaam": contact.get("Achternaam", ""),
-                    "functie": contact.get("Functie", ""),
                     "telefoonnummer": contact.get("Telefoonnummer", ""),
                     "klantenportaal_gebruikersnaam": contact.get("Klantenportaal_gebruikersnaam", ""),
-                    "nog_in_dienst": to_bool(contact.get("Nog_in_dienst", "Nee")),
+                    "nog_in_dienst": False,
                     "actie": "verwijderd",
-                    "verwijderd_op": datetime.now(nl_tz).isoformat(),
-                    "verwijderd_door": gewijzigd_door,
+                    "gewijzigd_op": datetime.now(nl_tz).isoformat(),
+                    "gewijzigd_door": gewijzigd_door,
                     "routecontact": to_bool(contact.get("Routecontact", False))
                 }
-                supabase.table("contactpersonen_log").insert(log_entry).execute()
+                supabase.table("service_wijzigingen_log").insert(log_entry).execute()
 
-        st.success("Alle wijzigingen zijn gelogd in contactpersonen_log!")
+                # Update de contactpersoon in de database
+                supabase.table("RelatiesImport").update({
+                    "Actief": False,
+                    "Nog_in_dienst": False
+                }).eq("E-mailadres", email).execute()
+
+        st.success("Alle wijzigingen zijn gelogd en doorgevoerd!")
         return True
     except Exception as e:
         st.error(f"Loggen in database mislukt: {e}")
