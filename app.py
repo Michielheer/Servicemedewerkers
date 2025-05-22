@@ -298,7 +298,7 @@ def save_contact_wijzigingen(updated_df, relatienummer, gewijzigd_door="onbekend
             if nog_in_dienst:
                 if is_nieuw:
                     add_klantenservice_todo(f"Nieuwe contactpersoon toegevoegd: {format_naam(row['Voornaam'], row['Tussenvoegsel'], row['Achternaam'])} ({row['E-mailadres']})")
-                    st.experimental_rerun()
+                    st.rerun()
                 else:
                     wijzigingen = []
                     for veld in ["Voornaam", "Tussenvoegsel", "Achternaam", "Telefoonnummer", "Klantenportaal_gebruikersnaam", "E-mailadres", "Routecontact"]:
@@ -307,10 +307,10 @@ def save_contact_wijzigingen(updated_df, relatienummer, gewijzigd_door="onbekend
                             nieuw_bool = to_bool(row[veld])
                             if not oud_bool and nieuw_bool:
                                 add_klantenservice_todo(f"Contactpersoon {format_naam(row['Voornaam'], row['Tussenvoegsel'], row['Achternaam'])} ({row['E-mailadres']}) is nu Routecontact (op de hoogte houden van leveringswijzigingen).")
-                                st.experimental_rerun()
+                                st.rerun()
                             if oud_bool and not nieuw_bool:
                                 add_klantenservice_todo(f"Contactpersoon {format_naam(row['Voornaam'], row['Tussenvoegsel'], row['Achternaam'])} ({row['E-mailadres']}) is niet langer Routecontact.")
-                                st.experimental_rerun()
+                                st.rerun()
                             if oud_bool != nieuw_bool:
                                 wijzigingen.append(f"{veld} aangepast van '{bool_to_ja_nee(oud_bool)}' naar '{bool_to_ja_nee(nieuw_bool)}'")
                         else:
@@ -321,7 +321,7 @@ def save_contact_wijzigingen(updated_df, relatienummer, gewijzigd_door="onbekend
                     if wijzigingen:
                         wijziging_tekst = "; ".join(wijzigingen)
                         add_klantenservice_todo(f"Contactpersoon gewijzigd: {format_naam(row['Voornaam'], row['Tussenvoegsel'], row['Achternaam'])} ({row['E-mailadres']}) – {wijziging_tekst}")
-                        st.experimental_rerun()
+                        st.rerun()
 
         to_delete = db_emails - table_emails
         for contact in db_contacts:
@@ -1322,7 +1322,7 @@ with data_tab:
                 'Nog_in_dienst': True,
                 'Routecontact': False
             })
-            st.experimental_rerun()
+            st.rerun()
 
         st.markdown("---")
         st.markdown("**Let op:** Alle wijzigingen worden pas gelogd als je op onderstaande knop drukt.")
@@ -1351,7 +1351,7 @@ with data_tab:
                         tekst = f"Contactpersoon {contact.get('Voornaam')} {contact.get('Achternaam')} ({email}) is niet meer in dienst. Controleer en update CRM."
                         add_klantenservice_todo(tekst)
                         st.success(f"✅ To-do aangemaakt voor klantenservice: {tekst}")
-                        st.experimental_rerun()  # Herlaad de pagina om de nieuwe to-do te tonen
+                        st.rerun()  # Herlaad de pagina om de nieuwe to-do te tonen
             
                 st.success("Wijzigingen gelogd en to-do's voor klantenservice toegevoegd!")
     else:
