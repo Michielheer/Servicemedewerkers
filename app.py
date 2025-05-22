@@ -40,9 +40,9 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Voeg deze helperfunctie direct na de imports toe:
 def format_naam(voornaam, tussenvoegsel, achternaam):
-    v = str(voornaam) if voornaam else ""
-    t = str(tussenvoegsel) if tussenvoegsel else ""
-    a = str(achternaam) if achternaam else ""
+    v = str(voornaam) if voornaam and str(voornaam).lower() != "none" else ""
+    t = str(tussenvoegsel) if tussenvoegsel and str(tussenvoegsel).lower() != "none" else ""
+    a = str(achternaam) if achternaam and str(achternaam).lower() != "none" else ""
     return f"{v} {t} {a}".replace("  ", " ").strip()
 
 # --- Hulpfuncties
@@ -1276,7 +1276,7 @@ with data_tab:
     # Toon bestaande contactpersonen
     if contactpersonen_data:
         for idx, contact in enumerate(contactpersonen_data):
-            with st.expander(f"{contact.get('Voornaam', '')} {contact.get('Tussenvoegsel', '')} {contact.get('Achternaam', '')}"):
+            with st.expander(format_naam(contact.get('Voornaam', ''), contact.get('Tussenvoegsel', ''), contact.get('Achternaam', ''))):
                 col1, col2 = st.columns(2)
                 
                 with col1:
