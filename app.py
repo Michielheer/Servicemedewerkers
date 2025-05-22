@@ -38,6 +38,13 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# Voeg deze helperfunctie direct na de imports toe:
+def format_naam(voornaam, tussenvoegsel, achternaam):
+    v = str(voornaam) if voornaam else ""
+    t = str(tussenvoegsel) if tussenvoegsel else ""
+    a = str(achternaam) if achternaam else ""
+    return f"{v} {t} {a}".replace("  ", " ").strip()
+
 # --- Hulpfuncties
 
 def bereken_leeftijd(barcode):
@@ -128,10 +135,18 @@ def vergelijk_en_log_wijzigingen(oud_data, nieuw_data, relatienummer, klantnaam,
         return False
 
 def add_todo_action(text):
+    """Voeg een to-do toe aan de lijst van servicemedewerkers."""
     if 'todo_list' not in st.session_state:
         st.session_state['todo_list'] = []
     if not any(todo['text'] == text for todo in st.session_state['todo_list']):
         st.session_state['todo_list'].append({"text": text, "done": False})
+
+def add_klantenservice_todo(text):
+    """Voeg een to-do toe aan de lijst van klantenservice."""
+    if 'klantenservice_todo_list' not in st.session_state:
+        st.session_state['klantenservice_todo_list'] = []
+    if not any(todo['text'] == text for todo in st.session_state['klantenservice_todo_list']):
+        st.session_state['klantenservice_todo_list'].append({"text": text, "done": False})
 
 def vuilgraad_visualisatie(vuilgraad_label):
     if vuilgraad_label == "Schoon":
@@ -170,15 +185,9 @@ def genereer_todo_list():
             if match and int(match.group(1)) >= 3:
                 add_todo_action(f"Controleer logomat '{mat_naam}' (ouder dan 3 jaar)")
                 # Voeg ook een to-do toe voor de klantenservice
-                if 'klantenservice_todo_list' not in st.session_state:
-                    st.session_state['klantenservice_todo_list'] = []
                 tekst = f"Logomat ouder dan 3 jaar bij klant '{mat_naam}': plan nieuwe logomat, check of logo gelijk is gebleven, geef aan dat je een nieuwe gaat bestellen."
-                if not any(tekst in t["text"] for t in st.session_state['klantenservice_todo_list']):
-                    st.session_state['klantenservice_todo_list'].append({
-                        "text": tekst,
-                        "done": False
-                    })
-                    st.success(f"✅ Upsell kans geïdentificeerd voor {mat_naam} - To-do aangemaakt voor klantenservice")
+                add_klantenservice_todo(tekst)
+                st.success(f"✅ Upsell kans geïdentificeerd voor {mat_naam} - To-do aangemaakt voor klantenservice")
 
     # Wissers
     wissers_tabel = st.session_state.get('wissers_tabel', [])
@@ -201,37 +210,56 @@ def genereer_todo_list():
 
 def save_contact_wijzigingen(updated_df, relatienummer, gewijzigd_door="onbekend"):
     try:
-        # Haal bestaande contactpersonen uit de database
         db_contacts = supabase.table("RelatiesImport").select("*").eq("Relatienummer", str(relatienummer)).execute().data
         db_emails = set([c.get("E-mailadres", "") for c in db_contacts if c.get("E-mailadres")])
-
-        # E-mails in de huidige tabel
         table_emails = set(updated_df["E-mailadres"].dropna().astype(str))
 
-        # 1. Toevoegen of wijzigen: alleen loggen
         for _, row in updated_df.iterrows():
             if not row["E-mailadres"]:
-                continue  # sla lege rijen over
-            
-            # Bepaal of het een nieuwe of gewijzigde contactpersoon is
-            is_nieuw = row["E-mailadres"] not in db_emails
-            
+                continue
+            nog_in_dienst = row.get("Nog_in_dienst", True)
+
+            # Zoek matching contact op basis van naamvelden
+            match_contact = next((c for c in db_contacts if
+                                  str(c.get("Voornaam", "")).strip() == str(row["Voornaam"]).strip() and
+                                  str(c.get("Tussenvoegsel", "")).strip() == str(row["Tussenvoegsel"]).strip() and
+                                  str(c.get("Achternaam", "")).strip() == str(row["Achternaam"]).strip()), None)
+
+            is_nieuw = match_contact is None
+
             log_entry = {
                 "relatienummer": str(relatienummer),
                 "email": row["E-mailadres"],
                 "voornaam": row["Voornaam"],
                 "tussenvoegsel": row["Tussenvoegsel"],
                 "achternaam": row["Achternaam"],
+                "functie": "",
                 "telefoonnummer": row["Telefoonnummer"],
                 "klantenportaal_gebruikersnaam": row["Klantenportaal_gebruikersnaam"],
-                "nog_in_dienst": row["Nog_in_dienst"],
+                "nog_in_dienst": nog_in_dienst,
                 "actie": "toegevoegd" if is_nieuw else "gewijzigd",
-                "gewijzigd_op": datetime.now(nl_tz).isoformat(),
-                "gewijzigd_door": gewijzigd_door
+                "verwijderd_op": datetime.now(nl_tz).isoformat(),
+                "verwijderd_door": gewijzigd_door,
+                "routecontact": row.get("Routecontact", False)
             }
             supabase.table("contactpersonen_log").insert(log_entry).execute()
 
-        # 2. Verwijderen: alleen loggen
+            if nog_in_dienst:
+                if is_nieuw:
+                    add_klantenservice_todo(f"Nieuwe contactpersoon toegevoegd: {format_naam(row['Voornaam'], row['Tussenvoegsel'], row['Achternaam'])} ({row['E-mailadres']})")
+                    st.experimental_rerun()
+                else:
+                    wijzigingen = []
+                    for veld in ["Voornaam", "Tussenvoegsel", "Achternaam", "Telefoonnummer", "Klantenportaal_gebruikersnaam", "E-mailadres", "Routecontact"]:
+                        oud = str(match_contact.get(veld, "")).strip() if veld != "Routecontact" else str(bool(match_contact.get(veld, False)))
+                        nieuw = str(row[veld]).strip() if veld != "Routecontact" else str(bool(row[veld]))
+                        if oud != nieuw:
+                            wijzigingen.append(f"{veld} aangepast van '{oud}' naar '{nieuw}'")
+                    if wijzigingen:
+                        wijziging_tekst = "; ".join(wijzigingen)
+                        add_klantenservice_todo(f"Contactpersoon gewijzigd: {format_naam(row['Voornaam'], row['Tussenvoegsel'], row['Achternaam'])} ({row['E-mailadres']}) – {wijziging_tekst}")
+                        st.experimental_rerun()
+
         to_delete = db_emails - table_emails
         for contact in db_contacts:
             email = contact.get("E-mailadres", "")
@@ -242,12 +270,14 @@ def save_contact_wijzigingen(updated_df, relatienummer, gewijzigd_door="onbekend
                     "voornaam": contact.get("Voornaam", ""),
                     "tussenvoegsel": contact.get("Tussenvoegsel", ""),
                     "achternaam": contact.get("Achternaam", ""),
+                    "functie": contact.get("Functie", ""),
                     "telefoonnummer": contact.get("Telefoonnummer", ""),
                     "klantenportaal_gebruikersnaam": contact.get("Klantenportaal_gebruikersnaam", ""),
                     "nog_in_dienst": contact.get("Nog_in_dienst", True),
                     "actie": "verwijderd",
-                    "gewijzigd_op": datetime.now(nl_tz).isoformat(),
-                    "gewijzigd_door": gewijzigd_door
+                    "verwijderd_op": datetime.now(nl_tz).isoformat(),
+                    "verwijderd_door": gewijzigd_door,
+                    "routecontact": contact.get("Routecontact", False)
                 }
                 supabase.table("contactpersonen_log").insert(log_entry).execute()
 
@@ -589,12 +619,14 @@ contactpersonen_data = supabase.table("RelatiesImport").select("*").eq("Relatien
 contactpersonen_lijst = []
 for contactpersoon in contactpersonen_data:
     voornaam = contactpersoon.get("Voornaam", "")
-    tussen = contactpersoon.get("Tussenvoegsel", "") if contactpersoon.get("Tussenvoegsel") else ""
+    tussen = contactpersoon.get("Tussenvoegsel", "")
     achternaam = contactpersoon.get("Achternaam", "")
     email = contactpersoon.get("E-mailadres", "")
-    contactp_str = f"{voornaam} {tussen} {achternaam}"
+    naam_str = format_naam(voornaam, tussen, achternaam)
     if email:
-        contactp_str += f" ({email})"
+        contactp_str = f"{naam_str} ({email})"
+    else:
+        contactp_str = naam_str
     contactpersonen_lijst.append(contactp_str)
 
 # Maak een string met alle contactpersonen
@@ -788,12 +820,8 @@ with form_tab:
                                     st.session_state['klantenservice_todo_list'] = []
                                 
                                 tekst = f"Upsell kans: {type_wisser} heeft hoog verbruik ({percentage_vuil:.1f}% vuil). Overweeg extra wissers aan te bieden."
-                                if not any(tekst in t["text"] for t in st.session_state['klantenservice_todo_list']):
-                                    st.session_state['klantenservice_todo_list'].append({
-                                        "text": tekst,
-                                        "done": False
-                                    })
-                                    st.success(f"✅ Upsell kans geïdentificeerd voor {type_wisser} - To-do aangemaakt voor klantenservice")
+                                add_klantenservice_todo(tekst)
+                                st.success(f"✅ Upsell kans geïdentificeerd voor {type_wisser} - To-do aangemaakt voor klantenservice")
 
             # Toon accessoires tabel
             if accessoires_data:
@@ -1037,10 +1065,6 @@ with form_tab:
             if wissers_abos:
                 wissers_data = inspectieformulier("Wissers", wissers_abos, "wissers_fotos")
 
-    if st.button("Genereer To-do's op basis van huidige data"):
-        st.session_state['todo_list'] = []  # Leegmaken, zodat alleen actuele to-do's blijven
-        genereer_todo_list()
-
     if st.button("Sla alles op voor deze klant"):
         # Voor matten
         if matten_data:
@@ -1191,6 +1215,7 @@ with data_tab:
                     klantenportaal = st.text_input("Klantenportaal gebruikersnaam", value=contact.get('Klantenportaal_gebruikersnaam', ''), key=f"klantenportaal_{idx}")
                 
                 nog_in_dienst = st.checkbox("Nog in dienst", value=contact.get('Nog_in_dienst', True), key=f"nog_in_dienst_{idx}")
+                routecontact = st.checkbox("Routecontact (op de hoogte houden van leveringswijzigingen)", value=contact.get('Routecontact', False), key=f"routecontact_{idx}")
                 
                 # Sla de gewijzigde gegevens op in de originele data
                 contactpersonen_data[idx].update({
@@ -1200,20 +1225,9 @@ with data_tab:
                     'E-mailadres': email,
                     'Telefoonnummer': telefoon,
                     'Klantenportaal_gebruikersnaam': klantenportaal,
-                    'Nog_in_dienst': nog_in_dienst
+                    'Nog_in_dienst': nog_in_dienst,
+                    'Routecontact': routecontact
                 })
-
-                # Voeg direct een to-do toe als iemand uit dienst gaat
-                if not nog_in_dienst and contact.get('Nog_in_dienst', True):
-                    if 'klantenservice_todo_list' not in st.session_state:
-                        st.session_state['klantenservice_todo_list'] = []
-                    tekst = f"Contactpersoon {voornaam} {tussenvoegsel} {achternaam} ({email}) is niet meer in dienst. Controleer en update CRM."
-                    if not any(tekst in t["text"] for t in st.session_state['klantenservice_todo_list']):
-                        st.session_state['klantenservice_todo_list'].append({
-                            "text": tekst,
-                            "done": False
-                        })
-                        st.success(f"✅ To-do aangemaakt voor klantenservice: {tekst}")
 
         # Knop om nieuwe contactpersoon toe te voegen
         if st.button("➕ Nieuwe contactpersoon toevoegen"):
@@ -1224,7 +1238,8 @@ with data_tab:
                 'E-mailadres': '',
                 'Telefoonnummer': '',
                 'Klantenportaal_gebruikersnaam': '',
-                'Nog_in_dienst': True
+                'Nog_in_dienst': True,
+                'Routecontact': False
             })
             st.experimental_rerun()
 
@@ -1247,19 +1262,15 @@ with data_tab:
                         continue
                     
                     # Check voor klantportaal gebruikersnaam
-                    if not contact.get('Klantenportaal_gebruikersnaam'):
-                        if not any(f"Uitnodigen klantportaal voor {email}" in t["text"] for t in st.session_state['klantenservice_todo_list']):
-                            st.session_state['klantenservice_todo_list'].append({
-                                "text": f"Uitnodigen klantportaal voor {email}",
-                                "done": False
-                            })
+                    if not contact.get('Klantenportaal_gebruikersnaam') and contact.get('Nog_in_dienst', True):
+                        add_klantenservice_todo(f"Uitnodigen klantportaal voor {email}")
                     
                     # Check voor wijzigingen in contactgegevens
                     if contact.get('Nog_in_dienst') == False:
-                        st.session_state['klantenservice_todo_list'].append({
-                            "text": f"Contactpersoon {contact.get('Voornaam')} {contact.get('Achternaam')} ({email}) is niet meer in dienst. Controleer en update CRM.",
-                            "done": False
-                        })
+                        tekst = f"Contactpersoon {contact.get('Voornaam')} {contact.get('Achternaam')} ({email}) is niet meer in dienst. Controleer en update CRM."
+                        add_klantenservice_todo(tekst)
+                        st.success(f"✅ To-do aangemaakt voor klantenservice: {tekst}")
+                        st.experimental_rerun()  # Herlaad de pagina om de nieuwe to-do te tonen
             
                 st.success("Wijzigingen gelogd en to-do's voor klantenservice toegevoegd!")
     else:
