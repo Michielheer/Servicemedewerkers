@@ -651,6 +651,8 @@ if 'geselecteerde_klant' not in st.session_state or st.session_state.geselecteer
     st.session_state.geselecteerde_klant = relatienummer
     st.session_state.bezoek_datum = datetime.now(nl_tz).date()
     st.session_state.bezoek_tijd = datetime.now(nl_tz).strftime("%H:%M")
+    st.session_state['todo_list'] = []
+    st.session_state['klantenservice_todo_list'] = []
 
 # --- Abonnementen ophalen ---
 abon_data = supabase.table("abonnementen").select("*").eq("relatienummer", relatienummer).execute().data
