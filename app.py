@@ -643,30 +643,7 @@ for k in klanten_data:
     if k['relatienummer'] and k['naam']:
         klanten_uniek[str(k['relatienummer'])] = k['naam']
 
-# Debug: Toon alle relatienummers
-st.write("Beschikbare relatienummers:", [repr(str(k['relatienummer']).strip()) for k in klanten_data])
-
-# Haal contactpersonen op uit RelatiesImport (let op hoofdletters en streepje)
-relatieimport_data = supabase.table("RelatiesImport").select(
-    "Relatienummer, Voornaam, Tussenvoegsel, Achternaam, E-mailadres"
-).execute().data
-
-# Normaliseer de relatienummers in RelatiesImport
-for r in relatieimport_data:
-    if r['Relatienummer']:
-        # Converteer naar string en verwijder whitespace
-        relnr = str(r['Relatienummer']).strip()
-        # Verwijder eventuele leading zeros
-        relnr = relnr.lstrip('0')
-        # Update het relatienummer
-        r['Relatienummer'] = relnr
-
-relatie_map = {}
-for r in relatieimport_data:
-    if r['Relatienummer']:
-        relnr = str(r['Relatienummer']).strip()
-        relatie_map[relnr] = r
-
+# --- Relatienummer selectie ---
 klant_keuze = st.selectbox(
     "Kies klant (relatienummer - naam)",
     [f"{nr} - {naam}" for nr, naam in klanten_uniek.items()],
@@ -702,7 +679,7 @@ for abo in matten_abos:
         "aantal": abo.get("aantal", 0),
         "aanwezig": False,
         "schoon_onbeschadigd": True,
-        "vuilgraad_label": "Licht vervuild",
+        "vuilgraad_label": "",
         "vuilgraad": 1,
         "barcode": abo.get("barcode", ""),
         "bezoekritme": abo.get("bezoekritme", "")
@@ -762,6 +739,28 @@ with form_tab:
         st.markdown(f"## Inspectieformulier {soort}")
         data = {}
 
+        # Verzamel alle afdelingen en ligplaatsen
+        afdelingen = set()
+        ligplaatsen = set()
+        for abo in abos:
+            if 'afdeling' in abo and abo['afdeling']:
+                afdelingen.add(abo['afdeling'])
+            if 'ligplaats' in abo and abo['ligplaats']:
+                ligplaatsen.add(abo['ligplaats'])
+            for loc in abo.get('ligplaatsen', []):
+                if 'afdeling' in loc and loc['afdeling']:
+                    afdelingen.add(loc['afdeling'])
+                if 'ligplaats' in loc and loc['ligplaats']:
+                    ligplaatsen.add(loc['ligplaats'])
+        
+        # Voeg standaard opties toe
+        afdelingen.add('Algemeen')
+        ligplaatsen.add('Algemeen')
+        
+        # Sorteer de lijsten
+        afdelingen = sorted(list(afdelingen))
+        ligplaatsen = sorted(list(ligplaatsen))
+
         # Alleen bij matten de mattenvraag tonen
         if soort == "Matten":
             st.markdown("### Zien we matten van de concurrent liggen?")
@@ -789,41 +788,60 @@ with form_tab:
             aantal_koop = st.number_input("Aantal koop matten", min_value=0, value=0, step=1, key=f"aantal_koop_{soort}")
             data["aantal_koop"] = aantal_koop
 
-            # Tabel voor matten
+            # Carrousel voor matten
             st.markdown("### Matten overzicht")
-            mat_data = []
-            for mat in st.session_state.standaard_matten_lijst:
-                mat_data.append({
-                    "Productomschrijving": mat["mat_type"],
-                    "Afdeling": mat["afdeling"],
-                    "Ligplaats": mat["ligplaats"],
-                    "Aantal": mat["aantal"],
-                    "Aanwezig": mat["aanwezig"],
-                    "Vuilgraad": mat["vuilgraad_label"]
-                })
-
-            if mat_data:
-                df = pd.DataFrame(mat_data)
-                column_order = ["Afdeling", "Ligplaats", "Productomschrijving", "Aantal", "Vuilgraad", "Aanwezig"]
-                columns_to_use = [col for col in column_order if col in df.columns and col != "Schoon/onbeschadigd"]
-                other_columns = [col for col in df.columns if col not in column_order]
-                final_column_order = columns_to_use + other_columns
-                df = df[final_column_order]
-                edited_df = st.data_editor(
-                    df,
-                    column_config={
-                        "Productomschrijving": st.column_config.TextColumn("Productomschrijving", disabled=True),
-                        "Afdeling": st.column_config.SelectboxColumn("Afdeling", options=afdelingen, required=True),
-                        "Ligplaats": st.column_config.SelectboxColumn("Ligplaats", options=ligplaatsen, required=True),
-                        "Aantal": st.column_config.NumberColumn("Aantal", min_value=0),
-                        "Aanwezig": st.column_config.CheckboxColumn("Aanwezig"),
-                        "Vuilgraad": st.column_config.SelectboxColumn("Vuilgraad", options=["", "Schoon", "Licht vervuild", "Sterk vervuild"], required=True)
-                    },
-                    hide_index=True,
-                    num_rows="dynamic",
-                    key=f"standaard_matten_editor_{soort}"
-                )
-                data["matten_lijst"] = edited_df.to_dict("records")
+            if 'matten_index' not in st.session_state:
+                st.session_state.matten_index = 0
+            matten_lijst = st.session_state.standaard_matten_lijst
+            totaal_matten = len(matten_lijst)
+            if totaal_matten > 0:
+                i = st.session_state.matten_index
+                mat = matten_lijst[i]
+                st.markdown(f"#### Mat {i+1} van {totaal_matten}")
+                col_p, col_n = st.columns([3,1])
+                with col_p:
+                    mat_type = st.text_input(f"Productomschrijving mat", value=mat["mat_type"], key=f"mat_type_{i}", disabled=True)
+                with col_n:
+                    aantal = st.number_input(f"Aantal mat", min_value=0, value=mat["aantal"], step=1, key=f"aantal_{i}")
+                col_a, col_b = st.columns([1,1])
+                with col_a:
+                    afdeling = st.selectbox(f"Afdeling mat", options=afdelingen, index=afdelingen.index(mat["afdeling"]) if mat["afdeling"] in afdelingen else 0, key=f"afdeling_{i}", label_visibility="collapsed")
+                with col_b:
+                    ligplaats = st.selectbox(f"Ligplaats mat", options=ligplaatsen, index=ligplaatsen.index(mat["ligplaats"]) if mat["ligplaats"] in ligplaatsen else 0, key=f"ligplaats_{i}", label_visibility="collapsed")
+                aanwezig = st.checkbox(f"Aanwezig mat", value=mat["aanwezig"], key=f"aanwezig_{i}")
+                vuilgraad_opties = ["", "Schoon", "Licht vervuild", "Sterk vervuild"]
+                # Vuilgraad altijd standaard leeg tenzij er een geldige waarde is
+                if mat["vuilgraad_label"] in vuilgraad_opties and mat["vuilgraad_label"] != "":
+                    vuilgraad_index = vuilgraad_opties.index(mat["vuilgraad_label"])
+                else:
+                    vuilgraad_index = 0
+                vuilgraad = st.selectbox(f"Vuilgraad mat", options=vuilgraad_opties, index=vuilgraad_index, key=f"vuilgraad_{i}")
+                aangepaste_mat = {
+                    "Productomschrijving": mat_type,
+                    "Afdeling": afdeling,
+                    "Ligplaats": ligplaats,
+                    "Aantal": aantal,
+                    "Aanwezig": aanwezig,
+                    "Vuilgraad": vuilgraad
+                }
+                # Knoppen voor bladeren
+                col1, col2, col3 = st.columns([1,2,1])
+                with col1:
+                    if st.button("Vorige", disabled=(i==0)):
+                        st.session_state.matten_index = max(0, i-1)
+                with col3:
+                    if st.button("Volgende", disabled=(i==totaal_matten-1)):
+                        st.session_state.matten_index = min(totaal_matten-1, i+1)
+                # Sla aangepaste mat op in een tijdelijke lijst
+                if 'matten_lijst_resultaat' not in st.session_state:
+                    st.session_state.matten_lijst_resultaat = [{} for _ in range(totaal_matten)]
+                # Zorg dat de lijst altijd lang genoeg is
+                while len(st.session_state.matten_lijst_resultaat) < totaal_matten:
+                    st.session_state.matten_lijst_resultaat.append({})
+                st.session_state.matten_lijst_resultaat[i] = aangepaste_mat
+                data["matten_lijst"] = st.session_state.matten_lijst_resultaat
+            else:
+                st.info("Geen matten gevonden.")
 
             # Logomatten sectie
             st.markdown("#### Logomatten")
@@ -929,15 +947,6 @@ with form_tab:
                     key=f"toebehoren_tabel_{soort}"
                 )
                 data["toebehoren_tabel"] = edited_toebehoren_df.to_dict("records")
-
-        # Foto's sectie
-        st.markdown("### Foto's")
-        data["fotos"] = []
-        fotos = st.file_uploader("Upload foto's", accept_multiple_files=True, key=fotos_key)
-        if fotos:
-            for foto in fotos:
-                data["fotos"].append(foto)
-            st.success(f"{len(data['fotos'])} foto's geüpload")
 
         return data
 
