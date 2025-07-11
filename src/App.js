@@ -498,8 +498,19 @@ function App() {
 
   return (
     <div className="App">
-      <div className="header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 20 }}>
-        <img src="/Logo-Lavans-png.png" alt="Lavans logo" style={{ maxWidth: 250, marginBottom: 10 }} />
+      <div className="header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 20, padding: '20px 0' }}>
+        <img 
+          src="/Logo-Lavans-png.png" 
+          alt="Lavans logo" 
+          style={{ 
+            maxWidth: 300, 
+            maxHeight: 120,
+            width: 'auto',
+            height: 'auto',
+            marginBottom: 15,
+            objectFit: 'contain'
+          }} 
+        />
         <h1>Lavans Service App</h1>
         <p>Ideaal Servicemoment</p>
       </div>
