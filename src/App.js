@@ -498,18 +498,11 @@ function App() {
 
   return (
     <div className="App">
-      <div className="header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 20, padding: '20px 0' }}>
+      <div className="header">
         <img 
           src="/Logo-Lavans-png.png" 
           alt="Lavans logo" 
-          style={{ 
-            maxWidth: 300, 
-            maxHeight: 120,
-            width: 'auto',
-            height: 'auto',
-            marginBottom: 15,
-            objectFit: 'contain'
-          }} 
+          className="header-logo"
         />
         <h1>Lavans Service App</h1>
         <p>Ideaal Servicemoment</p>
@@ -522,26 +515,27 @@ function App() {
           </div>
         )}
 
-        <div className="tabs">
-          <button
-            className={`tab ${activeTab === 'inspectie' ? 'active' : ''}`}
-            onClick={() => setActiveTab('inspectie')}
-          >
-            Inspectie
-          </button>
-          <button
-            className={`tab ${activeTab === 'todos' ? 'active' : ''}`}
-            onClick={() => setActiveTab('todos')}
-          >
-            To-Do's
-          </button>
-          <button
-            className={`tab ${activeTab === 'contactpersonen' ? 'active' : ''}`}
-            onClick={() => setActiveTab('contactpersonen')}
-          >
-            Contactpersonen
-          </button>
-
+        <div className="tabs-container">
+          <div className="tabs">
+            <button
+              className={`tab ${activeTab === 'inspectie' ? 'active' : ''}`}
+              onClick={() => setActiveTab('inspectie')}
+            >
+              Inspectie
+            </button>
+            <button
+              className={`tab ${activeTab === 'todos' ? 'active' : ''}`}
+              onClick={() => setActiveTab('todos')}
+            >
+              To-Do's
+            </button>
+            <button
+              className={`tab ${activeTab === 'contactpersonen' ? 'active' : ''}`}
+              onClick={() => setActiveTab('contactpersonen')}
+            >
+              Contactpersonen
+            </button>
+          </div>
         </div>
 
         {activeTab === 'inspectie' && (
