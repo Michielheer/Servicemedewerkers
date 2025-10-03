@@ -358,7 +358,7 @@ function App() {
     klantnaam: '',
     contactpersoon: '',
     contact_email: '',
-    inspecteur: '',
+    inspecteur: 'Angelo',
     datum: format(new Date(), 'yyyy-MM-dd'),
     tijd: format(new Date(), 'HH:mm'),
     algemeen_values: {}

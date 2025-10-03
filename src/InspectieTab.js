@@ -156,12 +156,13 @@ const InspectieTab = ({
     </div>
 
     <div className="form-group">
-      <label>Inspecteur:</label>
+      <label>Servicemedewerker:</label>
       <input
         type="text"
         className="form-control"
         value={formData.inspecteur}
         onChange={(e) => setFormData({...formData, inspecteur: e.target.value})}
+        placeholder="Angelo"
       />
     </div>
 
