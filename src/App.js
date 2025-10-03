@@ -33,6 +33,42 @@ const HARDCODED_STANDAARD_MATTEN = [
     vuilgraad_label: "Licht vervuild",
     barcode: "",
     opmerkingen: "Vervangen nodig"
+  },
+  {
+    productnummer: "00M003",
+    mat_type: "Standaard mat 120x180",
+    afdeling: "Magazijn",
+    ligplaats: "Ingang magazijn",
+    aantal: 3,
+    aanwezig: false,
+    schoon_onbeschadigd: false,
+    vuilgraad_label: "Sterk vervuild",
+    barcode: "",
+    opmerkingen: "Niet aanwezig - controleren"
+  },
+  {
+    productnummer: "00M004",
+    mat_type: "Standaard mat 60x90",
+    afdeling: "Algemeen",
+    ligplaats: "Algemeen",
+    aantal: 1,
+    aanwezig: true,
+    schoon_onbeschadigd: true,
+    vuilgraad_label: "Schoon",
+    barcode: "",
+    opmerkingen: "Ligplaats aanpassen in TMS"
+  },
+  {
+    productnummer: "00M005",
+    mat_type: "Standaard mat 90x120",
+    afdeling: "Kantine",
+    ligplaats: "Ingang kantine",
+    aantal: 2,
+    aanwezig: true,
+    schoon_onbeschadigd: false,
+    vuilgraad_label: "Licht vervuild",
+    barcode: "",
+    opmerkingen: "Reinigen nodig"
   }
 ];
 
@@ -61,6 +97,42 @@ const HARDCODED_LOGOMATTEN = [
     vuilgraad_label: "Sterk vervuild",
     barcode: "0300623",
     opmerkingen: "Niet aanwezig"
+  },
+  {
+    productnummer: "L003",
+    mat_type: "Logo mat Oud (3+ jaar)",
+    afdeling: "Kantoor",
+    ligplaats: "Kantoor ingang",
+    aantal: 1,
+    aanwezig: true,
+    schoon_onbeschadigd: true,
+    vuilgraad_label: "Schoon",
+    barcode: "0300120", // januari 2020 - 4+ jaar oud
+    opmerkingen: "Ouder dan 4 jaar - vervangen"
+  },
+  {
+    productnummer: "L004",
+    mat_type: "Logo mat Klant 2",
+    afdeling: "Algemeen",
+    ligplaats: "Algemeen",
+    aantal: 1,
+    aanwezig: true,
+    schoon_onbeschadigd: false,
+    vuilgraad_label: "Licht vervuild",
+    barcode: "0300321", // maart 2021 - 3+ jaar oud
+    opmerkingen: "Ligplaats aanpassen"
+  },
+  {
+    productnummer: "L005",
+    mat_type: "Logo mat Klant 3",
+    afdeling: "Magazijn",
+    ligplaats: "Magazijn ingang",
+    aantal: 2,
+    aanwezig: true,
+    schoon_onbeschadigd: true,
+    vuilgraad_label: "Schoon",
+    barcode: "0300622", // juni 2022 - 2 jaar oud
+    opmerkingen: ""
   }
 ];
 
@@ -80,6 +152,21 @@ const HARDCODED_WISSERS = [
     artikel: "Opvangbak snelwisser 50 cm",
     aantal_geteld: 0,
     waarvan_gebruikt: 0
+  },
+  {
+    artikel: "Snelwisser 40 cm",
+    aantal_geteld: 0,
+    waarvan_gebruikt: 0
+  },
+  {
+    artikel: "Steel met clip snelwisser kunststof",
+    aantal_geteld: 0,
+    waarvan_gebruikt: 0
+  },
+  {
+    artikel: "Opvangbak snelwisser 40 cm",
+    aantal_geteld: 0,
+    waarvan_gebruikt: 0
   }
 ];
 
@@ -92,6 +179,26 @@ const HARDCODED_TOEBEHOREN = [
   },
   {
     artikel: "Muursteun snelwisser",
+    vervangen: false,
+    aantal: 0
+  },
+  {
+    artikel: "Rooster opvangbak 40 cm",
+    vervangen: false,
+    aantal: 0
+  },
+  {
+    artikel: "Muursteun snelwisser kunststof",
+    vervangen: false,
+    aantal: 0
+  },
+  {
+    artikel: "Clip snelwisser aluminium",
+    vervangen: false,
+    aantal: 0
+  },
+  {
+    artikel: "Clip snelwisser kunststof",
     vervangen: false,
     aantal: 0
   }
@@ -117,6 +224,36 @@ const HARDCODED_CONTACTPERSONEN = [
     telefoon: "06-87654321",
     klantenportaal: "",
     nog_in_dienst: true,
+    routecontact: false
+  },
+  {
+    voornaam: "Maria",
+    tussenvoegsel: "van der",
+    achternaam: "Berg",
+    email: "maria.van.der.berg@bedrijf.nl",
+    telefoon: "06-11223344",
+    klantenportaal: "maria.berg",
+    nog_in_dienst: true,
+    routecontact: false
+  },
+  {
+    voornaam: "Lisa",
+    tussenvoegsel: "",
+    achternaam: "Smit",
+    email: "lisa.smit@bedrijf.nl",
+    telefoon: "06-55667788",
+    klantenportaal: "",
+    nog_in_dienst: true,
+    routecontact: false
+  },
+  {
+    voornaam: "Mark",
+    tussenvoegsel: "de",
+    achternaam: "Vries",
+    email: "mark.de.vries@bedrijf.nl",
+    telefoon: "06-99887766",
+    klantenportaal: "mark.vries",
+    nog_in_dienst: false,
     routecontact: false
   }
 ];
