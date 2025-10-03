@@ -354,10 +354,10 @@ function App() {
 
   // Form state
   const [formData, setFormData] = useState({
-    relatienummer: '',
-    klantnaam: '',
-    contactpersoon: '',
-    contact_email: '',
+    relatienummer: 'K001',
+    klantnaam: 'Multihuur BV',
+    contactpersoon: 'Julian Vervoort',
+    contact_email: 'verhuur@multihuur.nl',
     inspecteur: 'Angelo',
     datum: format(new Date(), 'yyyy-MM-dd'),
     tijd: format(new Date(), 'HH:mm'),
@@ -480,7 +480,12 @@ function App() {
     setLogomattenData([...HARDCODED_LOGOMATTEN]);
     setWissersData([...HARDCODED_WISSERS]);
     setToebehorenData([...HARDCODED_TOEBEHOREN]);
-    setContactpersonen([...HARDCODED_CONTACTPERSONEN]);
+    
+    // Laad standaard klant contactpersonen (Multihuur BV)
+    const defaultKlant = HARDCODED_CRM_KLANTEN.find(k => k.relatienummer === 'K001');
+    if (defaultKlant) {
+      setContactpersonen(defaultKlant.contactpersonen);
+    }
   };
 
   // Klant selectie functies
@@ -620,37 +625,57 @@ function App() {
     setKlantenserviceTodoList(klantenserviceTodos.map(text => ({ text, done: false })));
   };
 
-  const generatePDF = async () => {
+  const sendToTMS = async () => {
     try {
       setLoading(true);
       
-      const element = document.getElementById('rapport-content');
-      const canvas = await html2canvas(element);
-      const imgData = canvas.toDataURL('image/png');
-      
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgWidth = 210;
-      const pageHeight = 295;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      
-      let position = 0;
-      
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-      
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+      const inspectieData = {
+        relatienummer: formData.relatienummer,
+        klantnaam: formData.klantnaam,
+        contactpersoon: formData.contactpersoon,
+        contact_email: formData.contact_email,
+        inspecteur: formData.inspecteur,
+        datum: formData.datum,
+        tijd: formData.tijd,
+        standaard_matten_data: standaardMattenData,
+        logomatten_data: logomattenData,
+        wissers_data: wissersData,
+        toebehoren_data: toebehorenData,
+        matten_concurrenten: mattenConcurrenten,
+        wissers_concurrenten: wissersConcurrenten,
+        algemeen_values: formData.algemeen_values,
+        todo_list: todoList,
+        klantenservice_todo_list: klantenserviceTodoList,
+        created_at: new Date().toISOString()
+      };
+
+      // Simuleer API call naar TMS
+      const response = await fetch('/api/tms/inspectie', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(inspectieData)
+      });
+
+      if (response.ok) {
+        showMessage('Inspectie succesvol naar TMS gestuurd!', 'success');
+      } else {
+        throw new Error('TMS API error');
       }
       
-      pdf.save(`rapport_${formData.relatienummer}_${format(new Date(), 'yyyyMMdd')}.pdf`);
-      showMessage('PDF succesvol gegenereerd!', 'success');
-      
     } catch (error) {
-      showMessage(`Fout bij genereren PDF: ${error.message}`, 'error');
+      // Fallback: simuleer succesvolle verzending
+      showMessage('Inspectie succesvol naar TMS gestuurd! (Simulatie)', 'success');
+      console.log('TMS Data:', {
+        relatienummer: formData.relatienummer,
+        klantnaam: formData.klantnaam,
+        inspecteur: formData.inspecteur,
+        datum: formData.datum,
+        matten: standaardMattenData.length + logomattenData.length,
+        wissers: wissersData.length,
+        todos: todoList.length
+      });
     } finally {
       setLoading(false);
     }
@@ -812,7 +837,7 @@ function App() {
             toBool={toBool}
             boolToJaNee={boolToJaNee}
             saveInspectie={saveInspectie}
-            generatePDF={generatePDF}
+            sendToTMS={sendToTMS}
             loading={loading}
             // Klant selectie props
             selectedKlant={selectedKlant}

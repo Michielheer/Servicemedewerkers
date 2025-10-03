@@ -24,7 +24,7 @@ const InspectieTab = ({
   toBool,
   boolToJaNee,
   saveInspectie,
-  generatePDF,
+  sendToTMS,
   loading,
   // Klant selectie props
   selectedKlant,
@@ -634,8 +634,8 @@ const InspectieTab = ({
       <button className="btn btn-primary" onClick={saveInspectie} disabled={loading}>
         {loading ? 'Opslaan...' : 'Inspectie Opslaan'}
       </button>
-      <button className="btn btn-secondary" onClick={generatePDF} disabled={loading} style={{ marginLeft: '10px' }}>
-        {loading ? 'Genereren...' : 'PDF Genereren'}
+      <button className="btn btn-secondary" onClick={sendToTMS} disabled={loading} style={{ marginLeft: '10px' }}>
+        {loading ? 'Verzenden...' : 'Verstuur naar TMS'}
       </button>
     </div>
   </div>
