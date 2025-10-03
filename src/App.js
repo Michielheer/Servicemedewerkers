@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { nl } from 'date-fns/locale';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import './App.css';
 import InspectieTab from './InspectieTab';
 import TodoTab from './TodoTab';
@@ -340,17 +337,12 @@ const HARDCODED_CRM_KLANTEN = [
   }
 ];
 
-// Hardcoded contactpersonen data (voor backward compatibility)
-const HARDCODED_CONTACTPERSONEN = [];
 
 function App() {
   const [activeTab, setActiveTab] = useState('inspectie');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [modalContent, setModalContent] = useState('');
-  const [modalTitle, setModalTitle] = useState('');
 
   // Form state
   const [formData, setFormData] = useState({
@@ -869,19 +861,6 @@ function App() {
           />
         )}
 
-        {showModal && (
-          <div className="modal">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h3>{modalTitle}</h3>
-                <button className="modal-close" onClick={() => setShowModal(false)}>
-                  ×
-                </button>
-              </div>
-              <div dangerouslySetInnerHTML={{ __html: modalContent }} />
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
