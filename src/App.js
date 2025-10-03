@@ -204,59 +204,144 @@ const HARDCODED_TOEBEHOREN = [
   }
 ];
 
-// Hardcoded contactpersonen data
-const HARDCODED_CONTACTPERSONEN = [
+// Hardcoded CRM klanten data (zoals uit database)
+const HARDCODED_CRM_KLANTEN = [
   {
-    voornaam: "Jan",
-    tussenvoegsel: "",
-    achternaam: "Jansen",
-    email: "jan.jansen@bedrijf.nl",
-    telefoon: "06-12345678",
-    klantenportaal: "jan.jansen",
-    nog_in_dienst: true,
-    routecontact: true
+    relatienummer: "K001",
+    klantnaam: "Multihuur BV",
+    adres: "Hoofdstraat 123",
+    postcode: "1234 AB",
+    plaats: "Amsterdam",
+    telefoon: "020-1234567",
+    email: "info@multihuur.nl",
+    contactpersonen: [
+      {
+        voornaam: "Julian",
+        tussenvoegsel: "",
+        achternaam: "Vervoort",
+        email: "verhuur@multihuur.nl",
+        telefoon: "06-12345678",
+        functie: "Facility Manager",
+        routecontact: true,
+        klantenportaal: "julian.vervoort",
+        nog_in_dienst: true
+      },
+      {
+        voornaam: "Lisa",
+        tussenvoegsel: "",
+        achternaam: "Jansen",
+        email: "lisa@multihuur.nl",
+        telefoon: "06-87654321",
+        functie: "Receptie",
+        routecontact: false,
+        klantenportaal: "",
+        nog_in_dienst: true
+      }
+    ]
   },
   {
-    voornaam: "Piet",
-    tussenvoegsel: "van",
-    achternaam: "Pietersen",
-    email: "piet.pietersen@bedrijf.nl",
-    telefoon: "06-87654321",
-    klantenportaal: "",
-    nog_in_dienst: true,
-    routecontact: false
+    relatienummer: "K002",
+    klantnaam: "TechCorp Nederland",
+    adres: "Innovatielaan 45",
+    postcode: "5678 CD",
+    plaats: "Utrecht",
+    telefoon: "030-9876543",
+    email: "contact@techcorp.nl",
+    contactpersonen: [
+      {
+        voornaam: "Mark",
+        tussenvoegsel: "van der",
+        achternaam: "Berg",
+        email: "mark.berg@techcorp.nl",
+        telefoon: "06-11223344",
+        functie: "IT Manager",
+        routecontact: true,
+        klantenportaal: "mark.berg",
+        nog_in_dienst: true
+      }
+    ]
   },
   {
-    voornaam: "Maria",
-    tussenvoegsel: "van der",
-    achternaam: "Berg",
-    email: "maria.van.der.berg@bedrijf.nl",
-    telefoon: "06-11223344",
-    klantenportaal: "maria.berg",
-    nog_in_dienst: true,
-    routecontact: false
+    relatienummer: "K003",
+    klantnaam: "Retail Solutions BV",
+    adres: "Winkelstraat 789",
+    postcode: "9012 EF",
+    plaats: "Rotterdam",
+    telefoon: "010-5555555",
+    email: "info@retailsolutions.nl",
+    contactpersonen: [
+      {
+        voornaam: "Sarah",
+        tussenvoegsel: "de",
+        achternaam: "Vries",
+        email: "sarah.vries@retailsolutions.nl",
+        telefoon: "06-55667788",
+        functie: "Operations Manager",
+        routecontact: true,
+        klantenportaal: "sarah.vries",
+        nog_in_dienst: true
+      },
+      {
+        voornaam: "Peter",
+        tussenvoegsel: "",
+        achternaam: "Smit",
+        email: "peter.smit@retailsolutions.nl",
+        telefoon: "06-99887766",
+        functie: "Magazijn Manager",
+        routecontact: false,
+        klantenportaal: "",
+        nog_in_dienst: false
+      }
+    ]
   },
   {
-    voornaam: "Lisa",
-    tussenvoegsel: "",
-    achternaam: "Smit",
-    email: "lisa.smit@bedrijf.nl",
-    telefoon: "06-55667788",
-    klantenportaal: "",
-    nog_in_dienst: true,
-    routecontact: false
+    relatienummer: "K004",
+    klantnaam: "Healthcare Plus",
+    adres: "Ziekenhuisweg 321",
+    postcode: "3456 GH",
+    plaats: "Den Haag",
+    telefoon: "070-1111111",
+    email: "faciliteiten@healthcareplus.nl",
+    contactpersonen: [
+      {
+        voornaam: "Dr. Anna",
+        tussenvoegsel: "",
+        achternaam: "Bakker",
+        email: "a.bakker@healthcareplus.nl",
+        telefoon: "06-33445566",
+        functie: "Facility Director",
+        routecontact: true,
+        klantenportaal: "anna.bakker",
+        nog_in_dienst: true
+      }
+    ]
   },
   {
-    voornaam: "Mark",
-    tussenvoegsel: "de",
-    achternaam: "Vries",
-    email: "mark.de.vries@bedrijf.nl",
-    telefoon: "06-99887766",
-    klantenportaal: "mark.vries",
-    nog_in_dienst: false,
-    routecontact: false
+    relatienummer: "K005",
+    klantnaam: "Logistics Pro",
+    adres: "Distributieweg 654",
+    postcode: "7890 IJ",
+    plaats: "Eindhoven",
+    telefoon: "040-2222222",
+    email: "logistics@logisticspro.nl",
+    contactpersonen: [
+      {
+        voornaam: "Tom",
+        tussenvoegsel: "van",
+        achternaam: "Dijk",
+        email: "tom.dijk@logisticspro.nl",
+        telefoon: "06-77889900",
+        functie: "Warehouse Manager",
+        routecontact: true,
+        klantenportaal: "tom.dijk",
+        nog_in_dienst: true
+      }
+    ]
   }
 ];
+
+// Hardcoded contactpersonen data (voor backward compatibility)
+const HARDCODED_CONTACTPERSONEN = [];
 
 function App() {
   const [activeTab, setActiveTab] = useState('inspectie');
@@ -278,6 +363,11 @@ function App() {
     tijd: format(new Date(), 'HH:mm'),
     algemeen_values: {}
   });
+
+  // Klant selectie state
+  const [selectedKlant, setSelectedKlant] = useState(null);
+  const [klantSearchTerm, setKlantSearchTerm] = useState('');
+  const [showKlantDropdown, setShowKlantDropdown] = useState(false);
 
   // Concurrenten state
   const [mattenConcurrenten, setMattenConcurrenten] = useState({
@@ -392,6 +482,28 @@ function App() {
     setToebehorenData([...HARDCODED_TOEBEHOREN]);
     setContactpersonen([...HARDCODED_CONTACTPERSONEN]);
   };
+
+  // Klant selectie functies
+  const handleKlantSelect = (klant) => {
+    setSelectedKlant(klant);
+    setFormData(prev => ({
+      ...prev,
+      relatienummer: klant.relatienummer,
+      klantnaam: klant.klantnaam,
+      contactpersoon: klant.contactpersonen.find(cp => cp.routecontact)?.voornaam + ' ' + 
+                     (klant.contactpersonen.find(cp => cp.routecontact)?.tussenvoegsel || '') + ' ' + 
+                     klant.contactpersonen.find(cp => cp.routecontact)?.achternaam || '',
+      contact_email: klant.contactpersonen.find(cp => cp.routecontact)?.email || ''
+    }));
+    setContactpersonen(klant.contactpersonen);
+    setKlantSearchTerm(klant.klantnaam);
+    setShowKlantDropdown(false);
+  };
+
+  const filteredKlanten = HARDCODED_CRM_KLANTEN.filter(klant => 
+    klant.klantnaam.toLowerCase().includes(klantSearchTerm.toLowerCase()) ||
+    klant.relatienummer.toLowerCase().includes(klantSearchTerm.toLowerCase())
+  );
 
   const saveInspectie = async () => {
     try {
@@ -702,6 +814,14 @@ function App() {
             saveInspectie={saveInspectie}
             generatePDF={generatePDF}
             loading={loading}
+            // Klant selectie props
+            selectedKlant={selectedKlant}
+            klantSearchTerm={klantSearchTerm}
+            setKlantSearchTerm={setKlantSearchTerm}
+            showKlantDropdown={showKlantDropdown}
+            setShowKlantDropdown={setShowKlantDropdown}
+            filteredKlanten={filteredKlanten}
+            handleKlantSelect={handleKlantSelect}
           />
         )}
         {activeTab === 'todos' && (

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 
 const InspectieTab = ({
   formData,
@@ -25,11 +25,94 @@ const InspectieTab = ({
   boolToJaNee,
   saveInspectie,
   generatePDF,
-  loading
-}) => (
+  loading,
+  // Klant selectie props
+  selectedKlant,
+  klantSearchTerm,
+  setKlantSearchTerm,
+  showKlantDropdown,
+  setShowKlantDropdown,
+  filteredKlanten,
+  handleKlantSelect
+}) => {
+  const dropdownRef = useRef(null);
+
+  // Click outside handler
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowKlantDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  return (
   <div className="card">
     <h2>Inspectie Formulier</h2>
     
+    {/* Klant selectie dropdown */}
+    <div className="form-group">
+      <label>Selecteer Klant:</label>
+      <div style={{ position: 'relative' }} ref={dropdownRef}>
+        <input
+          type="text"
+          className="form-control"
+          placeholder="Type klantnaam of relatienummer..."
+          value={klantSearchTerm}
+          onChange={(e) => {
+            setKlantSearchTerm(e.target.value);
+            setShowKlantDropdown(true);
+          }}
+          onFocus={() => setShowKlantDropdown(true)}
+        />
+        {showKlantDropdown && (
+          <div style={{
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            right: 0,
+            backgroundColor: 'white',
+            border: '1px solid #ccc',
+            borderTop: 'none',
+            maxHeight: '200px',
+            overflowY: 'auto',
+            zIndex: 1000,
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+          }}>
+            {filteredKlanten.length > 0 ? (
+              filteredKlanten.map((klant, index) => (
+                <div
+                  key={index}
+                  style={{
+                    padding: '10px',
+                    cursor: 'pointer',
+                    borderBottom: '1px solid #eee'
+                  }}
+                  onClick={() => handleKlantSelect(klant)}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = '#f5f5f5'}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                >
+                  <div style={{ fontWeight: 'bold' }}>{klant.klantnaam}</div>
+                  <div style={{ fontSize: '0.9em', color: '#666' }}>
+                    {klant.relatienummer} • {klant.plaats}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div style={{ padding: '10px', color: '#666' }}>
+                Geen klanten gevonden
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+
     <div className="form-group">
       <label>Relatienummer:</label>
       <input
@@ -37,6 +120,7 @@ const InspectieTab = ({
         className="form-control"
         value={formData.relatienummer}
         onChange={(e) => setFormData({...formData, relatienummer: e.target.value})}
+        readOnly={selectedKlant !== null}
       />
     </div>
 
@@ -47,6 +131,7 @@ const InspectieTab = ({
         className="form-control"
         value={formData.klantnaam}
         onChange={(e) => setFormData({...formData, klantnaam: e.target.value})}
+        readOnly={selectedKlant !== null}
       />
     </div>
 
@@ -553,6 +638,7 @@ const InspectieTab = ({
       </button>
     </div>
   </div>
-);
+  );
+};
 
 export default InspectieTab; 
