@@ -342,7 +342,7 @@ const InspectieTab = ({
                 </td>
                 <td>
                   <select
-                    className="form-control"
+                    className="form-control vuilgraad-dropdown"
                     value={mat.vuilgraad_label}
                     onChange={(e) => updateStandaardMatData(index, 'vuilgraad_label', e.target.value)}
                   >
@@ -437,7 +437,7 @@ const InspectieTab = ({
                 </td>
                 <td>
                   <select
-                    className="form-control"
+                    className="form-control vuilgraad-dropdown"
                     value={mat.vuilgraad_label}
                     onChange={(e) => updateLogomatData(index, 'vuilgraad_label', e.target.value)}
                   >

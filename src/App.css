@@ -133,6 +133,46 @@
   white-space: nowrap;
 }
 
+/* Vuilgraad dropdown styling */
+.responsive-table select {
+  min-width: 120px;
+  padding: 6px 8px;
+  border: 2px solid #e9ecef;
+  border-radius: 4px;
+  background-color: white;
+  font-size: 0.9em;
+  transition: border-color 0.2s ease;
+}
+
+.responsive-table select:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+  outline: none;
+}
+
+.responsive-table select:hover {
+  border-color: #adb5bd;
+}
+
+/* Extra styling voor vuilgraad dropdown */
+.vuilgraad-dropdown {
+  font-weight: 500;
+  background-color: #fff !important;
+  border: 2px solid #007bff !important;
+  color: #333;
+}
+
+.vuilgraad-dropdown:focus {
+  background-color: #f8f9fa !important;
+  border-color: #0056b3 !important;
+  box-shadow: 0 0 0 0.3rem rgba(0,123,255,0.3) !important;
+}
+
+.vuilgraad-dropdown option {
+  padding: 8px;
+  font-weight: 500;
+}
+
 @media (max-width: 768px) {
   .form-row {
     flex-direction: column;
@@ -167,6 +207,20 @@
   .responsive-table td {
     padding: 6px 4px;
     font-size: 0.85em;
+  }
+  
+  /* Mobile dropdown improvements */
+  .responsive-table select {
+    min-width: 100px;
+    padding: 8px 6px;
+    font-size: 0.8em;
+    border: 2px solid #007bff;
+    background-color: #f8f9fa;
+  }
+  
+  .responsive-table select:focus {
+    background-color: white;
+    border-color: #0056b3;
   }
   
   /* Mobile form improvements */
