@@ -685,8 +685,8 @@ function App() {
     const lavansLightBlue = [230, 240, 250]; // #E6F0FA
     const lavansGreen = [0, 128, 64]; // #008040
     
-    // Helper function to add text with line breaks
-    const addText = (text, fontSize = 12, isBold = false, color = [0, 0, 0]) => {
+    // Helper function to add text with line breaks - compact voor 1 A4
+    const addText = (text, fontSize = 10, isBold = false, color = [0, 0, 0]) => {
       pdf.setFontSize(fontSize);
       if (isBold) {
         pdf.setFont('helvetica', 'bold');
@@ -697,26 +697,17 @@ function App() {
       
       const lines = pdf.splitTextToSize(text, pageWidth - 2 * margin);
       lines.forEach(line => {
-        if (yPosition > 280) {
-          pdf.addPage();
-          yPosition = 20;
-        }
         pdf.text(line, margin, yPosition);
-        yPosition += 6;
+        yPosition += 4; // Compactere regelafstand
       });
-      yPosition += 2;
+      yPosition += 1;
     };
 
-    // Helper function to add colored box
-    const addColoredBox = (text, fontSize = 12, isBold = true, bgColor = lavansBlue) => {
-      if (yPosition > 280) {
-        pdf.addPage();
-        yPosition = 20;
-      }
-      
-      // Colored background
+    // Helper function to add colored box - compact voor 1 A4
+    const addColoredBox = (text, fontSize = 10, isBold = true, bgColor = lavansBlue) => {
+      // Colored background - kleiner
       pdf.setFillColor(bgColor[0], bgColor[1], bgColor[2]);
-      pdf.rect(margin - 2, yPosition - 4, pageWidth - 2 * margin + 4, 10, 'F');
+      pdf.rect(margin - 1, yPosition - 2, pageWidth - 2 * margin + 2, 6, 'F');
       
       // White text
       pdf.setFontSize(fontSize);
@@ -726,43 +717,38 @@ function App() {
         pdf.setFont('helvetica', 'normal');
       }
       pdf.setTextColor(255, 255, 255);
-      pdf.text(text, margin, yPosition + 2);
+      pdf.text(text, margin, yPosition + 1);
       
-      yPosition += 12;
+      yPosition += 8; // Compactere box hoogte
     };
 
-    // Header met logo plaats
+    // Header met logo plaats - compact
     pdf.setFillColor(lavansLightBlue[0], lavansLightBlue[1], lavansLightBlue[2]);
-    pdf.rect(0, 0, pageWidth, 40, 'F');
+    pdf.rect(0, 0, pageWidth, 25, 'F');
     
-    // Logo placeholder (tekst voor nu)
-    pdf.setFontSize(20);
+    // Logo placeholder (tekst voor nu) - compact
+    pdf.setFontSize(16);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(lavansBlue[0], lavansBlue[1], lavansBlue[2]);
-    pdf.text('LAVANS', 20, 15);
+    pdf.text('LAVANS', 20, 10);
     
-    pdf.setFontSize(14);
+    pdf.setFontSize(11);
     pdf.setFont('helvetica', 'normal');
-    pdf.text('Service Inspectie Rapport', 20, 22);
+    pdf.text('Service Inspectie Rapport', 20, 16);
     
-    pdf.setFontSize(10);
+    pdf.setFontSize(8);
     pdf.setTextColor(100, 100, 100);
-    pdf.text(`Gegenereerd op: ${format(new Date(), 'dd-MM-yyyy HH:mm')}`, 20, 30);
+    pdf.text(`${format(new Date(), 'dd-MM-yyyy HH:mm')}`, 20, 21);
     
-    yPosition = 50;
+    yPosition = 35;
     
-    // Klant informatie
-    addColoredBox('KLANT INFORMATIE', 14, true);
-    addText(`Klantnaam: ${formData.klantnaam}`, 12, true);
-    addText(`Relatienummer: ${formData.relatienummer}`, 12);
-    addText(`Contactpersoon: ${formData.contactpersoon}`, 12);
-    addText(`Inspecteur: ${formData.inspecteur}`, 12);
-    addText(`Datum inspectie: ${formData.datum}`, 12);
-    addText(`Tijd inspectie: ${formData.tijd}`, 12);
-    addText('', 12);
+    // Klant informatie - compact
+    addColoredBox('KLANT INFORMATIE', 10, true);
+    addText(`${formData.klantnaam} (${formData.relatienummer}) | ${formData.contactpersoon} | ${formData.inspecteur} | ${formData.datum} ${formData.tijd}`, 9);
+    addText('', 8);
 
-    // Samenvatting bevindingen
-    addColoredBox('SAMENVATTING BEVINDINGEN', 14, true);
+    // Samenvatting bevindingen - compact
+    addColoredBox('SAMENVATTING', 10, true);
     
     // Tel bevindingen
     let totalIssues = 0;
@@ -810,95 +796,79 @@ function App() {
       statusColor = [255, 193, 7]; // Geel
     }
 
-    addText(`Status: ${status}`, 14, true, statusColor);
-    addText(`Totaal bevindingen: ${totalIssues}`, 12);
-    addText(`Kritieke issues: ${criticalIssues}`, 12);
-    addText(`Matten issues: ${mattenIssues}`, 12);
-    addText(`Wissers issues: ${wissersIssues}`, 12);
-    addText('', 12);
+    addText(`Status: ${status} | Totaal: ${totalIssues} | Kritiek: ${criticalIssues} | Matten: ${mattenIssues} | Wissers: ${wissersIssues}`, 9, true, statusColor);
+    addText('', 8);
 
-    // Detail bevindingen
-    addColoredBox('DETAILBEVINDINGEN', 14, true);
+    // Detail bevindingen - compact
+    addColoredBox('BEVINDINGEN', 10, true);
     
     // Matten
     const mattenBevindingen = [];
     [...standaardMattenData, ...logomattenData].forEach(mat => {
       if (!mat.aanwezig) {
-        mattenBevindingen.push(`• Mat '${mat.mat_type}' niet aanwezig op locatie ${mat.afdeling}, ${mat.ligplaats}`);
+        mattenBevindingen.push(`• ${mat.mat_type} niet aanwezig (${mat.afdeling}, ${mat.ligplaats})`);
       }
       if (mat.vuilgraad_label === 'Sterk vervuild') {
-        mattenBevindingen.push(`• Mat '${mat.mat_type}' sterk vervuild - vervanging of reiniging nodig`);
+        mattenBevindingen.push(`• ${mat.mat_type} sterk vervuild - vervangen`);
       }
       if (mat.schoon_onbeschadigd === false) {
-        mattenBevindingen.push(`• Mat '${mat.mat_type}' heeft schade - inspectie vereist`);
+        mattenBevindingen.push(`• ${mat.mat_type} heeft schade`);
       }
       if (mat.opmerkingen && mat.opmerkingen.trim()) {
-        mattenBevindingen.push(`• Mat '${mat.mat_type}': ${mat.opmerkingen}`);
+        mattenBevindingen.push(`• ${mat.mat_type}: ${mat.opmerkingen}`);
       }
     });
 
     if (mattenBevindingen.length > 0) {
-      addText('MATTEN:', 12, true, lavansBlue);
-      mattenBevindingen.forEach(bevinding => addText(bevinding, 10));
-      addText('', 12);
+      addText('MATTEN:', 9, true, lavansBlue);
+      mattenBevindingen.forEach(bevinding => addText(bevinding, 8));
     }
 
     // Wissers
     const wissersBevindingen = [];
     wissersData.forEach(wisser => {
       if (wisser.aantal_geteld === 0) {
-        wissersBevindingen.push(`• Geen wissers van type '${wisser.artikel}' aanwezig`);
+        wissersBevindingen.push(`• ${wisser.artikel} niet aanwezig`);
       }
     });
 
     if (wissersBevindingen.length > 0) {
-      addText('WISSERS:', 12, true, lavansBlue);
-      wissersBevindingen.forEach(bevinding => addText(bevinding, 10));
-      addText('', 12);
+      addText('WISSERS:', 9, true, lavansBlue);
+      wissersBevindingen.forEach(bevinding => addText(bevinding, 8));
     }
 
-    // Actiepunten
-    addColoredBox('ACTIEPUNTEN', 14, true);
-    
+    // Actiepunten - compact
     if (todoList.length > 0) {
-      addText('VOOR LAVANS SERVICE:', 12, true, lavansBlue);
-      todoList.forEach(todo => {
+      addColoredBox('ACTIEPUNTEN', 10, true);
+      addText('VOOR LAVANS SERVICE:', 9, true, lavansBlue);
+      todoList.slice(0, 3).forEach(todo => { // Max 3 items voor ruimte
         if (!todo.done) {
-          addText(`• ${todo.text}`, 10);
+          addText(`• ${todo.text.length > 60 ? todo.text.substring(0, 60) + '...' : todo.text}`, 8);
         }
       });
-      addText('', 12);
+      if (todoList.length > 3) {
+        addText(`... en ${todoList.length - 3} andere actiepunten`, 8);
+      }
     }
 
-    // Klant feedback
+    // Klant feedback - compact
     if (formData.algemeen_values.klant_feedback && formData.algemeen_values.klant_feedback.trim()) {
-      addColoredBox('KLANT FEEDBACK', 14, true);
-      addText(formData.algemeen_values.klant_feedback, 12);
-      addText('', 12);
+      addColoredBox('KLANT FEEDBACK', 10, true);
+      const feedback = formData.algemeen_values.klant_feedback;
+      addText(feedback.length > 80 ? feedback.substring(0, 80) + '...' : feedback, 8);
     }
 
-    // Volgende stappen
-    addColoredBox('VOLGENDE STAPPEN', 14, true);
-    addText('• Lavans neemt alle bevindingen in behandeling', 10);
-    addText('• Kritieke issues worden binnen 24 uur opgevolgd', 10);
-    addText('• Overige bevindingen worden in de volgende service ronde aangepakt', 10);
-    addText('• Voor vragen kunt u contact opnemen met uw accountmanager', 10);
-    addText('', 12);
+    // Volgende stappen - compact
+    addColoredBox('VOLGENDE STAPPEN', 10, true);
+    addText('• Lavans neemt bevindingen in behandeling • Kritieke issues binnen 24u • Overige in volgende ronde • Vragen via accountmanager', 8);
 
-    // Footer met styling
-    if (yPosition > 260) {
-      pdf.addPage();
-      yPosition = 20;
-    }
-    
+    // Footer met styling - compact
     // Footer achtergrond
     pdf.setFillColor(lavansLightBlue[0], lavansLightBlue[1], lavansLightBlue[2]);
-    pdf.rect(0, yPosition - 10, pageWidth, 297 - yPosition + 10, 'F');
+    pdf.rect(0, yPosition - 5, pageWidth, 297 - yPosition + 5, 'F');
     
-    // Footer tekst
-    addText('Dit rapport is automatisch gegenereerd door Lavans Service', 8, false, lavansBlue);
-    addText('Voor vragen over dit rapport kunt u contact opnemen met uw accountmanager', 8, false, lavansBlue);
-    addText(`Rapport gegenereerd op: ${format(new Date(), 'dd-MM-yyyy HH:mm')}`, 8, false, lavansBlue);
+    // Footer tekst - compact
+    addText('Lavans Service | Vragen via accountmanager | Gegenereerd: ' + format(new Date(), 'dd-MM-yyyy HH:mm'), 7, false, lavansBlue);
 
     // Save PDF
     const fileName = `lavans_inspectie_${formData.relatienummer}_${format(new Date(), 'yyyyMMdd')}.pdf`;
