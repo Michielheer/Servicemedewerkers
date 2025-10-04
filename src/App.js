@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
+import jsPDF from 'jspdf';
 import './App.css';
 import InspectieTab from './InspectieTab';
 import TodoTab from './TodoTab';
@@ -673,6 +674,149 @@ function App() {
     }
   };
 
+  const generateExportRapport = () => {
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = 210;
+    const margin = 20;
+    let yPosition = 20;
+    
+    // Helper function to add text with line breaks
+    const addText = (text, fontSize = 12, isBold = false) => {
+      pdf.setFontSize(fontSize);
+      if (isBold) {
+        pdf.setFont('helvetica', 'bold');
+      } else {
+        pdf.setFont('helvetica', 'normal');
+      }
+      
+      const lines = pdf.splitTextToSize(text, pageWidth - 2 * margin);
+      lines.forEach(line => {
+        if (yPosition > 280) {
+          pdf.addPage();
+          yPosition = 20;
+        }
+        pdf.text(line, margin, yPosition);
+        yPosition += 6;
+      });
+      yPosition += 2;
+    };
+
+    // Header
+    addText('LAVANS SERVICE APP - ONTWIKKELINGSRAPPORT', 16, true);
+    addText(`Gegenereerd op: ${format(new Date(), 'dd-MM-yyyy HH:mm')}`, 10);
+    addText('', 12);
+    
+    // Project Overzicht
+    addText('PROJECT OVERZICHT', 14, true);
+    addText('Vandaag hebben we een volledig functionele React frontend gebouwd voor de Lavans Service App. Deze app vervangt de oorspronkelijke Streamlit applicatie en biedt verbeterde functionaliteit en gebruikerservaring.', 12);
+    addText('', 12);
+
+    // Bevindingen van de Inspectie
+    addText('BEVINDINGEN VAN DE INSPECTIE', 14, true);
+    
+    // Matten bevindingen
+    const mattenBevindingen = [];
+    [...standaardMattenData, ...logomattenData].forEach(mat => {
+      if (!mat.aanwezig) {
+        mattenBevindingen.push(`• Mat '${mat.mat_type}' niet aanwezig op locatie ${mat.afdeling}, ${mat.ligplaats}`);
+      }
+      if (mat.vuilgraad_label === 'Sterk vervuild') {
+        mattenBevindingen.push(`• Mat '${mat.mat_type}' sterk vervuild - vervanging of reiniging nodig`);
+      }
+      if (mat.schoon_onbeschadigd === false) {
+        mattenBevindingen.push(`• Mat '${mat.mat_type}' heeft schade - inspectie vereist`);
+      }
+      if (mat.opmerkingen && mat.opmerkingen.trim()) {
+        mattenBevindingen.push(`• Mat '${mat.mat_type}': ${mat.opmerkingen}`);
+      }
+    });
+
+    if (mattenBevindingen.length > 0) {
+      addText('MATTEN BEVINDINGEN:', 12, true);
+      mattenBevindingen.forEach(bevinding => addText(bevinding, 10));
+      addText('', 12);
+    }
+
+    // Wissers bevindingen
+    const wissersBevindingen = [];
+    wissersData.forEach(wisser => {
+      if (wisser.aantal_geteld === 0) {
+        wissersBevindingen.push(`• Geen wissers van type '${wisser.artikel}' aanwezig`);
+      }
+    });
+
+    if (wissersBevindingen.length > 0) {
+      addText('WISSERS BEVINDINGEN:', 12, true);
+      wissersBevindingen.forEach(bevinding => addText(bevinding, 10));
+      addText('', 12);
+    }
+
+    // To-do lijst
+    addText('GEGENEREERDE TO-DO\'S', 14, true);
+    
+    if (todoList.length > 0) {
+      addText('SERVICE TO-DO\'S:', 12, true);
+      todoList.forEach(todo => {
+        if (!todo.done) {
+          addText(`• ${todo.text}`, 10);
+        }
+      });
+      addText('', 12);
+    }
+
+    if (klantenserviceTodoList.length > 0) {
+      addText('KLANTENSERVICE TO-DO\'S:', 12, true);
+      klantenserviceTodoList.forEach(todo => {
+        if (!todo.done) {
+          addText(`• ${todo.text}`, 10);
+        }
+      });
+      addText('', 12);
+    }
+
+    // Technische Verbeteringen
+    addText('TECHNISCHE VERBETERINGEN VANDAAG', 14, true);
+    addText('• Volledige migratie van Streamlit naar React frontend', 10);
+    addText('• Mobiel-vriendelijke to-do lijst met card-based layout', 10);
+    addText('• CRM klant selectie dropdown met zoekfunctionaliteit', 10);
+    addText('• TMS API integratie voor automatische data verzending', 10);
+    addText('• Responsive design voor alle schermformaten', 10);
+    addText('• Slimme to-do generatie op basis van inspectie data', 10);
+    addText('• Standaard ingevulde formulieren voor snelle start', 10);
+    addText('', 12);
+
+    // Data Statistieken
+    addText('DATA STATISTIEKEN', 14, true);
+    addText(`• Totaal aantal matten: ${standaardMattenData.length + logomattenData.length}`, 10);
+    addText(`• Standaard matten: ${standaardMattenData.length}`, 10);
+    addText(`• Logo matten: ${logomattenData.length}`, 10);
+    addText(`• Wissers types: ${wissersData.length}`, 10);
+    addText(`• Toebehoren types: ${toebehorenData.length}`, 10);
+    addText(`• Service to-do's: ${todoList.length}`, 10);
+    addText(`• Klantenservice to-do's: ${klantenserviceTodoList.length}`, 10);
+    addText('', 12);
+
+    // Aanbevelingen
+    addText('AANBEVELINGEN', 14, true);
+    addText('• Implementeer de TMS API endpoint voor productie gebruik', 10);
+    addText('• Voeg meer klanten toe aan de CRM database', 10);
+    addText('• Test de app op verschillende mobiele apparaten', 10);
+    addText('• Overweeg push notificaties voor nieuwe to-do\'s', 10);
+    addText('• Implementeer offline functionaliteit voor betere bereikbaarheid', 10);
+    addText('', 12);
+
+    // Footer
+    addText('Dit rapport is automatisch gegenereerd door de Lavans Service App', 8);
+    addText(`Klant: ${formData.klantnaam} (${formData.relatienummer})`, 8);
+    addText(`Inspecteur: ${formData.inspecteur}`, 8);
+    addText(`Datum: ${formData.datum} ${formData.tijd}`, 8);
+
+    // Save PDF
+    const fileName = `lavans_rapport_${formData.relatienummer}_${format(new Date(), 'yyyyMMdd_HHmm')}.pdf`;
+    pdf.save(fileName);
+    showMessage('Export rapport succesvol gegenereerd!', 'success');
+  };
+
   const updateStandaardMatData = (index, field, value) => {
     const newData = [...standaardMattenData];
     newData[index] = { ...newData[index], [field]: value };
@@ -830,6 +974,7 @@ function App() {
             boolToJaNee={boolToJaNee}
             saveInspectie={saveInspectie}
             sendToTMS={sendToTMS}
+            generateExportRapport={generateExportRapport}
             loading={loading}
             // Klant selectie props
             selectedKlant={selectedKlant}
