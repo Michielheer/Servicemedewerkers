@@ -639,7 +639,7 @@ const InspectieTab = ({
         {loading ? 'Verzenden...' : 'Verstuur naar TMS'}
       </button>
       <button className="btn btn-success" onClick={generateExportRapport} disabled={loading} style={{ marginLeft: '10px' }}>
-        {loading ? 'Genereren...' : '📄 Export Rapport'}
+        {loading ? 'Genereren...' : '📄 Klantrapport'}
       </button>
     </div>
   </div>

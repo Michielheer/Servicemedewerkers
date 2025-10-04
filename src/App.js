@@ -680,14 +680,20 @@ function App() {
     const margin = 20;
     let yPosition = 20;
     
+    // Lavans kleuren
+    const lavansBlue = [0, 51, 102]; // #003366
+    const lavansLightBlue = [230, 240, 250]; // #E6F0FA
+    const lavansGreen = [0, 128, 64]; // #008040
+    
     // Helper function to add text with line breaks
-    const addText = (text, fontSize = 12, isBold = false) => {
+    const addText = (text, fontSize = 12, isBold = false, color = [0, 0, 0]) => {
       pdf.setFontSize(fontSize);
       if (isBold) {
         pdf.setFont('helvetica', 'bold');
       } else {
         pdf.setFont('helvetica', 'normal');
       }
+      pdf.setTextColor(color[0], color[1], color[2]);
       
       const lines = pdf.splitTextToSize(text, pageWidth - 2 * margin);
       lines.forEach(line => {
@@ -701,20 +707,120 @@ function App() {
       yPosition += 2;
     };
 
-    // Header
-    addText('LAVANS SERVICE APP - ONTWIKKELINGSRAPPORT', 16, true);
-    addText(`Gegenereerd op: ${format(new Date(), 'dd-MM-yyyy HH:mm')}`, 10);
-    addText('', 12);
+    // Helper function to add colored box
+    const addColoredBox = (text, fontSize = 12, isBold = true, bgColor = lavansBlue) => {
+      if (yPosition > 280) {
+        pdf.addPage();
+        yPosition = 20;
+      }
+      
+      // Colored background
+      pdf.setFillColor(bgColor[0], bgColor[1], bgColor[2]);
+      pdf.rect(margin - 2, yPosition - 4, pageWidth - 2 * margin + 4, 10, 'F');
+      
+      // White text
+      pdf.setFontSize(fontSize);
+      if (isBold) {
+        pdf.setFont('helvetica', 'bold');
+      } else {
+        pdf.setFont('helvetica', 'normal');
+      }
+      pdf.setTextColor(255, 255, 255);
+      pdf.text(text, margin, yPosition + 2);
+      
+      yPosition += 12;
+    };
+
+    // Header met logo plaats
+    pdf.setFillColor(lavansLightBlue[0], lavansLightBlue[1], lavansLightBlue[2]);
+    pdf.rect(0, 0, pageWidth, 40, 'F');
     
-    // Project Overzicht
-    addText('PROJECT OVERZICHT', 14, true);
-    addText('Vandaag hebben we een volledig functionele React frontend gebouwd voor de Lavans Service App. Deze app vervangt de oorspronkelijke Streamlit applicatie en biedt verbeterde functionaliteit en gebruikerservaring.', 12);
+    // Logo placeholder (tekst voor nu)
+    pdf.setFontSize(20);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(lavansBlue[0], lavansBlue[1], lavansBlue[2]);
+    pdf.text('LAVANS', 20, 15);
+    
+    pdf.setFontSize(14);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text('Service Inspectie Rapport', 20, 22);
+    
+    pdf.setFontSize(10);
+    pdf.setTextColor(100, 100, 100);
+    pdf.text(`Gegenereerd op: ${format(new Date(), 'dd-MM-yyyy HH:mm')}`, 20, 30);
+    
+    yPosition = 50;
+    
+    // Klant informatie
+    addColoredBox('KLANT INFORMATIE', 14, true);
+    addText(`Klantnaam: ${formData.klantnaam}`, 12, true);
+    addText(`Relatienummer: ${formData.relatienummer}`, 12);
+    addText(`Contactpersoon: ${formData.contactpersoon}`, 12);
+    addText(`Inspecteur: ${formData.inspecteur}`, 12);
+    addText(`Datum inspectie: ${formData.datum}`, 12);
+    addText(`Tijd inspectie: ${formData.tijd}`, 12);
     addText('', 12);
 
-    // Bevindingen van de Inspectie
-    addText('BEVINDINGEN VAN DE INSPECTIE', 14, true);
+    // Samenvatting bevindingen
+    addColoredBox('SAMENVATTING BEVINDINGEN', 14, true);
     
-    // Matten bevindingen
+    // Tel bevindingen
+    let totalIssues = 0;
+    let criticalIssues = 0;
+    let mattenIssues = 0;
+    let wissersIssues = 0;
+    
+    // Tel alle bevindingen
+    [...standaardMattenData, ...logomattenData].forEach(mat => {
+      if (!mat.aanwezig) {
+        mattenIssues++;
+        totalIssues++;
+        criticalIssues++;
+      }
+      if (mat.vuilgraad_label === 'Sterk vervuild') {
+        mattenIssues++;
+        totalIssues++;
+        criticalIssues++;
+      }
+      if (mat.schoon_onbeschadigd === false) {
+        mattenIssues++;
+        totalIssues++;
+      }
+      if (mat.opmerkingen && mat.opmerkingen.trim()) {
+        mattenIssues++;
+        totalIssues++;
+      }
+    });
+
+    wissersData.forEach(wisser => {
+      if (wisser.aantal_geteld === 0) {
+        wissersIssues++;
+        totalIssues++;
+      }
+    });
+
+    // Status bepaling
+    let status = 'GOED';
+    let statusColor = lavansGreen;
+    if (criticalIssues > 0) {
+      status = 'ATTENTIE NODIG';
+      statusColor = [255, 140, 0]; // Oranje
+    } else if (totalIssues > 5) {
+      status = 'CONTROLE AANBEVOLEN';
+      statusColor = [255, 193, 7]; // Geel
+    }
+
+    addText(`Status: ${status}`, 14, true, statusColor);
+    addText(`Totaal bevindingen: ${totalIssues}`, 12);
+    addText(`Kritieke issues: ${criticalIssues}`, 12);
+    addText(`Matten issues: ${mattenIssues}`, 12);
+    addText(`Wissers issues: ${wissersIssues}`, 12);
+    addText('', 12);
+
+    // Detail bevindingen
+    addColoredBox('DETAILBEVINDINGEN', 14, true);
+    
+    // Matten
     const mattenBevindingen = [];
     [...standaardMattenData, ...logomattenData].forEach(mat => {
       if (!mat.aanwezig) {
@@ -732,12 +838,12 @@ function App() {
     });
 
     if (mattenBevindingen.length > 0) {
-      addText('MATTEN BEVINDINGEN:', 12, true);
+      addText('MATTEN:', 12, true, lavansBlue);
       mattenBevindingen.forEach(bevinding => addText(bevinding, 10));
       addText('', 12);
     }
 
-    // Wissers bevindingen
+    // Wissers
     const wissersBevindingen = [];
     wissersData.forEach(wisser => {
       if (wisser.aantal_geteld === 0) {
@@ -746,16 +852,16 @@ function App() {
     });
 
     if (wissersBevindingen.length > 0) {
-      addText('WISSERS BEVINDINGEN:', 12, true);
+      addText('WISSERS:', 12, true, lavansBlue);
       wissersBevindingen.forEach(bevinding => addText(bevinding, 10));
       addText('', 12);
     }
 
-    // To-do lijst
-    addText('GEGENEREERDE TO-DO\'S', 14, true);
+    // Actiepunten
+    addColoredBox('ACTIEPUNTEN', 14, true);
     
     if (todoList.length > 0) {
-      addText('SERVICE TO-DO\'S:', 12, true);
+      addText('VOOR LAVANS SERVICE:', 12, true, lavansBlue);
       todoList.forEach(todo => {
         if (!todo.done) {
           addText(`• ${todo.text}`, 10);
@@ -764,57 +870,40 @@ function App() {
       addText('', 12);
     }
 
-    if (klantenserviceTodoList.length > 0) {
-      addText('KLANTENSERVICE TO-DO\'S:', 12, true);
-      klantenserviceTodoList.forEach(todo => {
-        if (!todo.done) {
-          addText(`• ${todo.text}`, 10);
-        }
-      });
+    // Klant feedback
+    if (formData.algemeen_values.klant_feedback && formData.algemeen_values.klant_feedback.trim()) {
+      addColoredBox('KLANT FEEDBACK', 14, true);
+      addText(formData.algemeen_values.klant_feedback, 12);
       addText('', 12);
     }
 
-    // Technische Verbeteringen
-    addText('TECHNISCHE VERBETERINGEN VANDAAG', 14, true);
-    addText('• Volledige migratie van Streamlit naar React frontend', 10);
-    addText('• Mobiel-vriendelijke to-do lijst met card-based layout', 10);
-    addText('• CRM klant selectie dropdown met zoekfunctionaliteit', 10);
-    addText('• TMS API integratie voor automatische data verzending', 10);
-    addText('• Responsive design voor alle schermformaten', 10);
-    addText('• Slimme to-do generatie op basis van inspectie data', 10);
-    addText('• Standaard ingevulde formulieren voor snelle start', 10);
+    // Volgende stappen
+    addColoredBox('VOLGENDE STAPPEN', 14, true);
+    addText('• Lavans neemt alle bevindingen in behandeling', 10);
+    addText('• Kritieke issues worden binnen 24 uur opgevolgd', 10);
+    addText('• Overige bevindingen worden in de volgende service ronde aangepakt', 10);
+    addText('• Voor vragen kunt u contact opnemen met uw accountmanager', 10);
     addText('', 12);
 
-    // Data Statistieken
-    addText('DATA STATISTIEKEN', 14, true);
-    addText(`• Totaal aantal matten: ${standaardMattenData.length + logomattenData.length}`, 10);
-    addText(`• Standaard matten: ${standaardMattenData.length}`, 10);
-    addText(`• Logo matten: ${logomattenData.length}`, 10);
-    addText(`• Wissers types: ${wissersData.length}`, 10);
-    addText(`• Toebehoren types: ${toebehorenData.length}`, 10);
-    addText(`• Service to-do's: ${todoList.length}`, 10);
-    addText(`• Klantenservice to-do's: ${klantenserviceTodoList.length}`, 10);
-    addText('', 12);
-
-    // Aanbevelingen
-    addText('AANBEVELINGEN', 14, true);
-    addText('• Implementeer de TMS API endpoint voor productie gebruik', 10);
-    addText('• Voeg meer klanten toe aan de CRM database', 10);
-    addText('• Test de app op verschillende mobiele apparaten', 10);
-    addText('• Overweeg push notificaties voor nieuwe to-do\'s', 10);
-    addText('• Implementeer offline functionaliteit voor betere bereikbaarheid', 10);
-    addText('', 12);
-
-    // Footer
-    addText('Dit rapport is automatisch gegenereerd door de Lavans Service App', 8);
-    addText(`Klant: ${formData.klantnaam} (${formData.relatienummer})`, 8);
-    addText(`Inspecteur: ${formData.inspecteur}`, 8);
-    addText(`Datum: ${formData.datum} ${formData.tijd}`, 8);
+    // Footer met styling
+    if (yPosition > 260) {
+      pdf.addPage();
+      yPosition = 20;
+    }
+    
+    // Footer achtergrond
+    pdf.setFillColor(lavansLightBlue[0], lavansLightBlue[1], lavansLightBlue[2]);
+    pdf.rect(0, yPosition - 10, pageWidth, 297 - yPosition + 10, 'F');
+    
+    // Footer tekst
+    addText('Dit rapport is automatisch gegenereerd door Lavans Service', 8, false, lavansBlue);
+    addText('Voor vragen over dit rapport kunt u contact opnemen met uw accountmanager', 8, false, lavansBlue);
+    addText(`Rapport gegenereerd op: ${format(new Date(), 'dd-MM-yyyy HH:mm')}`, 8, false, lavansBlue);
 
     // Save PDF
-    const fileName = `lavans_rapport_${formData.relatienummer}_${format(new Date(), 'yyyyMMdd_HHmm')}.pdf`;
+    const fileName = `lavans_inspectie_${formData.relatienummer}_${format(new Date(), 'yyyyMMdd')}.pdf`;
     pdf.save(fileName);
-    showMessage('Export rapport succesvol gegenereerd!', 'success');
+    showMessage('Klantrapport succesvol gegenereerd!', 'success');
   };
 
   const updateStandaardMatData = (index, field, value) => {
