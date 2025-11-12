@@ -148,7 +148,11 @@ module.exports = async function (context, req) {
     context.log.error('Materiaal API fout:', error);
     context.res = {
       status: 500,
-      body: { error: 'Materiaalgegevens konden niet worden opgehaald.' }
+      body: { 
+        error: 'Materiaalgegevens konden niet worden opgehaald.',
+        details: error.message,
+        code: error.code
+      }
     };
   }
 };

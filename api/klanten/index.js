@@ -46,7 +46,11 @@ module.exports = async function (context, req) {
     context.log.error('Klanten API fout:', error);
     context.res = {
       status: 500,
-      body: { error: 'Klanten konden niet worden opgehaald.' }
+      body: { 
+        error: 'Klanten konden niet worden opgehaald.',
+        details: error.message,
+        code: error.code
+      }
     };
   }
 };

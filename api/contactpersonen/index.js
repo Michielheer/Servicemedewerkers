@@ -55,7 +55,11 @@ module.exports = async function (context, req) {
     context.log.error('Contactpersonen API fout:', error);
     context.res = {
       status: 500,
-      body: { error: 'Contactpersonen konden niet worden opgehaald.' }
+      body: { 
+        error: 'Contactpersonen konden niet worden opgehaald.',
+        details: error.message,
+        code: error.code
+      }
     };
   }
 };
