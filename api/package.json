@@ -1,0 +1,11 @@
+{
+  "name": "lavans-service-api",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "mssql": "^9.3.1"
+  }
+}
+
