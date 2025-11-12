@@ -17,7 +17,7 @@ const HARDCODED_STANDAARD_MATTEN = [
     aantal: 2,
     aanwezig: true,
     schoon_onbeschadigd: true,
-    vuilgraad_label: "Schoon",
+    vuilgraad_label: "",
     barcode: "",
     opmerkingen: ""
   },
@@ -29,9 +29,9 @@ const HARDCODED_STANDAARD_MATTEN = [
     aantal: 1,
     aanwezig: true,
     schoon_onbeschadigd: false,
-    vuilgraad_label: "Licht vervuild",
+    vuilgraad_label: "",
     barcode: "",
-    opmerkingen: "Vervangen nodig"
+    opmerkingen: ""
   },
   {
     productnummer: "00M003",
@@ -41,9 +41,9 @@ const HARDCODED_STANDAARD_MATTEN = [
     aantal: 3,
     aanwezig: false,
     schoon_onbeschadigd: false,
-    vuilgraad_label: "Sterk vervuild",
+    vuilgraad_label: "",
     barcode: "",
-    opmerkingen: "Niet aanwezig - controleren"
+    opmerkingen: ""
   },
   {
     productnummer: "00M004",
@@ -53,9 +53,9 @@ const HARDCODED_STANDAARD_MATTEN = [
     aantal: 1,
     aanwezig: true,
     schoon_onbeschadigd: true,
-    vuilgraad_label: "Schoon",
+    vuilgraad_label: "",
     barcode: "",
-    opmerkingen: "Ligplaats aanpassen in TMS"
+    opmerkingen: ""
   },
   {
     productnummer: "00M005",
@@ -65,9 +65,9 @@ const HARDCODED_STANDAARD_MATTEN = [
     aantal: 2,
     aanwezig: true,
     schoon_onbeschadigd: false,
-    vuilgraad_label: "Licht vervuild",
+    vuilgraad_label: "",
     barcode: "",
-    opmerkingen: "Reinigen nodig"
+    opmerkingen: ""
   }
 ];
 
@@ -81,7 +81,7 @@ const HARDCODED_LOGOMATTEN = [
     aantal: 1,
     aanwezig: true,
     schoon_onbeschadigd: true,
-    vuilgraad_label: "Schoon",
+    vuilgraad_label: "",
     barcode: "0300522",
     opmerkingen: ""
   },
@@ -93,9 +93,9 @@ const HARDCODED_LOGOMATTEN = [
     aantal: 1,
     aanwezig: false,
     schoon_onbeschadigd: false,
-    vuilgraad_label: "Sterk vervuild",
+    vuilgraad_label: "",
     barcode: "0300623",
-    opmerkingen: "Niet aanwezig"
+    opmerkingen: ""
   },
   {
     productnummer: "L003",
@@ -105,9 +105,9 @@ const HARDCODED_LOGOMATTEN = [
     aantal: 1,
     aanwezig: true,
     schoon_onbeschadigd: true,
-    vuilgraad_label: "Schoon",
+    vuilgraad_label: "",
     barcode: "0300120", // januari 2020 - 4+ jaar oud
-    opmerkingen: "Ouder dan 4 jaar - vervangen"
+    opmerkingen: ""
   },
   {
     productnummer: "L004",
@@ -117,9 +117,9 @@ const HARDCODED_LOGOMATTEN = [
     aantal: 1,
     aanwezig: true,
     schoon_onbeschadigd: false,
-    vuilgraad_label: "Licht vervuild",
+    vuilgraad_label: "",
     barcode: "0300321", // maart 2021 - 3+ jaar oud
-    opmerkingen: "Ligplaats aanpassen"
+    opmerkingen: ""
   },
   {
     productnummer: "L005",
@@ -129,7 +129,7 @@ const HARDCODED_LOGOMATTEN = [
     aantal: 2,
     aanwezig: true,
     schoon_onbeschadigd: true,
-    vuilgraad_label: "Schoon",
+    vuilgraad_label: "",
     barcode: "0300622", // juni 2022 - 2 jaar oud
     opmerkingen: ""
   }
