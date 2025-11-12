@@ -407,6 +407,13 @@ function App() {
   const [todoList, setTodoList] = useState([]);
   const [klantenserviceTodoList, setKlantenserviceTodoList] = useState([]);
   const [contactpersonen, setContactpersonen] = useState([]);
+  const [completionOverlay, setCompletionOverlay] = useState({
+    visible: false,
+    logged: false,
+    summary: null,
+  });
+  const [loggingDatabase, setLoggingDatabase] = useState(false);
+  const [lastSavedInspectie, setLastSavedInspectie] = useState(null);
 
   // Helper functies
   const formatNaam = (voornaam, tussenvoegsel, achternaam) => {
@@ -478,6 +485,157 @@ function App() {
 
   const boolToJaNee = (val) => {
     return val ? 'Ja' : 'Nee';
+  };
+
+  const analyseInspectie = (inspectieData) => {
+    const serviceTodos = [];
+    const klantenserviceTodos = [];
+
+    let mattenIssues = 0;
+    let wissersIssues = 0;
+    let toebehorenIssues = 0;
+    let criticalIssues = 0;
+
+    const matten = [
+      ...(inspectieData.standaard_matten_data || []),
+      ...(inspectieData.logomatten_data || []),
+    ];
+
+    matten.forEach((mat) => {
+      const matNaam = mat.mat_type || 'Onbekend';
+      const afdeling = mat.afdeling || '';
+      const ligplaats = mat.ligplaats || '';
+      const locatieParts = [afdeling, ligplaats].filter(Boolean);
+      const locatie = locatieParts.length ? ` (${locatieParts.join(', ')})` : '';
+      const opmerkingen = (mat.opmerkingen || '').trim();
+      const vuilgraad = (mat.vuilgraad_label || '').trim();
+
+      if (mat.aanwezig === false) {
+        serviceTodos.push(`Controleer waarom mat '${matNaam}'${locatie} niet aanwezig is.`);
+        mattenIssues += 1;
+        criticalIssues += 1;
+      }
+
+      if ((mat.aantal ?? 1) === 0) {
+        serviceTodos.push(`Controleer of mat '${matNaam}'${locatie} verwijderd moet worden.`);
+        mattenIssues += 1;
+      }
+
+      if (vuilgraad.toLowerCase() === 'sterk vervuild') {
+        serviceTodos.push(`Mat '${matNaam}'${locatie} vervangen of reinigen (sterk vervuild).`);
+        mattenIssues += 1;
+        criticalIssues += 1;
+      }
+
+      if (mat.schoon_onbeschadigd === false) {
+        serviceTodos.push(`Mat '${matNaam}'${locatie} inspecteren op schade.`);
+        mattenIssues += 1;
+      }
+
+      if (opmerkingen) {
+        serviceTodos.push(`Controleer opmerking bij mat '${matNaam}'${locatie}: ${opmerkingen}`);
+        mattenIssues += 1;
+      }
+
+      if (afdeling === 'Algemeen' && ligplaats === 'Algemeen') {
+        serviceTodos.push(`Ligplaats controleren en aanpassen in TMS voor mat ${matNaam} (nu: Algemeen/Algemeen).`);
+        mattenIssues += 1;
+      }
+
+      if (mat.barcode && matNaam.toLowerCase().includes('logo')) {
+        const leeftijdStr = berekenLeeftijd(mat.barcode);
+        const match = leeftijdStr.match(/(\d+)\s*jaar/);
+        if (match && parseInt(match[1], 10) >= 3) {
+          klantenserviceTodos.push(
+            `Logomat ouder dan 3 jaar bij klant '${matNaam}': plan nieuwe logomat, check of logo gelijk is gebleven, geef aan dat je een nieuwe gaat bestellen.`
+          );
+          if (parseInt(match[1], 10) >= 4) {
+            const repScore = mat.representativiteitsscore ?? 100;
+            if (repScore < 70) {
+              serviceTodos.push(
+                `Logomat '${matNaam}'${locatie} moet vervangen worden: ouder dan 4 jaar en representativiteitsscore te laag.`
+              );
+              mattenIssues += 1;
+            }
+          }
+        }
+      }
+    });
+
+    (inspectieData.wissers_data || []).forEach((wisser) => {
+      const wisserType = wisser.artikel || 'Onbekend';
+      if ((wisser.aantal_geteld ?? 0) === 0) {
+        serviceTodos.push(`Controleer of wisser van type '${wisserType}' verwijderd moet worden.`);
+        wissersIssues += 1;
+      }
+
+      if ((wisser.opmerkingen || '').trim()) {
+        serviceTodos.push(`Controleer opmerking bij wisser van type '${wisserType}': ${wisser.opmerkingen}`);
+        wissersIssues += 1;
+      }
+
+      if (wisser.vuil_percentage !== undefined && wisser.vuil_percentage !== null) {
+        const perc = parseFloat(wisser.vuil_percentage);
+        if (!Number.isNaN(perc) && perc > 70) {
+          serviceTodos.push(
+            `Upsell kans: ${wisserType} heeft hoog verbruik (${perc}% vuil). Overweeg extra wissers aan te bieden.`
+          );
+          wissersIssues += 1;
+        }
+      }
+    });
+
+    (inspectieData.toebehoren_data || []).forEach((acc) => {
+      const accType = acc.artikel || 'Onbekend';
+      const aantal = acc.aantal ?? 0;
+
+      if (acc.vervangen && aantal > 0) {
+        serviceTodos.push(`Vervang ${aantal}x '${accType}' bij wissers.`);
+        toebehorenIssues += 1;
+      }
+
+      if ((acc.opmerkingen || '').trim()) {
+        serviceTodos.push(`Controleer opmerking bij toebehoren '${accType}': ${acc.opmerkingen}`);
+        toebehorenIssues += 1;
+      }
+    });
+
+    const totalIssues = mattenIssues + wissersIssues + toebehorenIssues;
+
+    let statusCode = 'success';
+    let statusLabel = 'Inspectie afgerond';
+
+    if (criticalIssues > 0) {
+      statusCode = 'critical';
+      statusLabel = 'Attentie nodig';
+    } else if (totalIssues > 5) {
+      statusCode = 'warning';
+      statusLabel = 'Controle aanbevolen';
+    }
+
+    return {
+      serviceTodos,
+      klantenserviceTodos,
+      summary: {
+        klantnaam: inspectieData.klantnaam,
+        relatienummer: inspectieData.relatienummer,
+        inspecteur: inspectieData.inspecteur,
+        datum: inspectieData.datum,
+        tijd: inspectieData.tijd,
+        createdAt: inspectieData.created_at,
+        statusCode,
+        statusLabel,
+        totalIssues,
+        criticalIssues,
+        mattenIssues,
+        wissersIssues,
+        toebehorenIssues,
+        serviceTodoCount: serviceTodos.length,
+        klantenTodoCount: klantenserviceTodos.length,
+        previewTodos: serviceTodos.slice(0, 3),
+        klantenPreview: klantenserviceTodos.slice(0, 2),
+      },
+    };
   };
 
   const showMessage = (text, type = 'info') => {
@@ -658,10 +816,42 @@ function App() {
 
       localStorage.setItem('lavans_laatste_inspectie', JSON.stringify(inspectieData));
 
-      showMessage('Inspectie succesvol opgeslagen!', 'success');
-      
-      // Genereer to-do's
-      generateTodosSlim();
+      const analyse = analyseInspectie(inspectieData);
+
+      setTodoList(analyse.serviceTodos.map((text) => ({ text, done: false })));
+      setKlantenserviceTodoList(analyse.klantenserviceTodos.map((text) => ({ text, done: false })));
+
+      setLastSavedInspectie(inspectieData);
+
+      let savedAtLabel = inspectieData.created_at;
+      try {
+        savedAtLabel = format(new Date(inspectieData.created_at), 'dd MMM yyyy HH:mm');
+      } catch (e) {
+        savedAtLabel = inspectieData.created_at;
+      }
+
+      let plannedMomentLabel = '';
+      if (inspectieData.datum) {
+        try {
+          const plannedMoment = new Date(`${inspectieData.datum}T${inspectieData.tijd || '00:00'}`);
+          plannedMomentLabel = format(plannedMoment, 'dd MMM yyyy HH:mm');
+        } catch (e) {
+          plannedMomentLabel = `${inspectieData.datum}${inspectieData.tijd ? ` ${inspectieData.tijd}` : ''}`;
+        }
+      }
+
+      setMessage('');
+      setMessageType('');
+
+      setCompletionOverlay({
+        visible: true,
+        logged: false,
+        summary: {
+          ...analyse.summary,
+          savedAtLabel,
+          plannedMomentLabel,
+        },
+      });
       
     } catch (error) {
       showMessage(`Fout bij opslaan: ${error.message}`, 'error');
@@ -670,84 +860,36 @@ function App() {
     }
   };
 
-  // Nieuwe slimme to-do logica
-  const generateTodosSlim = () => {
-    const serviceTodos = [];
-    const klantenserviceTodos = [];
+  const logInspectieNaarDatabase = async () => {
+    if (!lastSavedInspectie) {
+      showMessage('Geen inspectie om te loggen.', 'info');
+      return;
+    }
 
-    // Matten (standaard en logo)
-    [...standaardMattenData, ...logomattenData].forEach(mat => {
-      const matNaam = mat.mat_type || 'Onbekend';
-      const afdeling = mat.afdeling || '';
-      const ligplaats = mat.ligplaats || '';
-      const locatie = (afdeling || ligplaats) ? ` (${afdeling}, ${ligplaats})` : '';
-      if (!mat.aanwezig) {
-        serviceTodos.push(`Controleer waarom mat '${matNaam}'${locatie} niet aanwezig is.`);
-      }
-      if ((mat.aantal ?? 1) === 0) {
-        serviceTodos.push(`Controleer of mat '${matNaam}'${locatie} verwijderd moet worden.`);
-      }
-      if (mat.vuilgraad_label === 'Sterk vervuild') {
-        serviceTodos.push(`Mat '${matNaam}'${locatie} vervangen of reinigen (sterk vervuild).`);
-      }
-      if (mat.schoon_onbeschadigd === false) {
-        serviceTodos.push(`Mat '${matNaam}'${locatie} inspecteren op schade.`);
-      }
-      if ((mat.opmerkingen || '').trim()) {
-        serviceTodos.push(`Controleer opmerking bij mat '${matNaam}'${locatie}: ${mat.opmerkingen}`);
-      }
-      if (afdeling === 'Algemeen' && ligplaats === 'Algemeen') {
-        serviceTodos.push(`Ligplaats controleren en aanpassen in TMS voor mat ${matNaam} (nu: Algemeen/Algemeen).`);
-      }
-      // Jaarcheck logomatten: alleen voor logomatten
-      if (mat.barcode && matNaam.toLowerCase().includes('logo')) {
-        const leeftijdStr = berekenLeeftijd(mat.barcode);
-        const match = leeftijdStr.match(/(\d+) jaar/);
-        if (match && parseInt(match[1]) >= 3) {
-          serviceTodos.push(`Controleer logomat '${matNaam}' (ouder dan 3 jaar)`);
-          klantenserviceTodos.push(`Logomat ouder dan 3 jaar bij klant '${matNaam}': plan nieuwe logomat, check of logo gelijk is gebleven, geef aan dat je een nieuwe gaat bestellen.`);
-          if (parseInt(match[1]) >= 4) {
-            const repScore = mat.representativiteitsscore ?? 100;
-            if (repScore < 70) {
-              serviceTodos.push(`Logomat '${matNaam}'${locatie} moet vervangen worden: ouder dan 4 jaar en representativiteitsscore te laag.`);
-            }
-          }
-        }
-      }
+    try {
+      setLoggingDatabase(true);
+
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+
+      console.log('Simulatie database logging (Lavans 2025):', lastSavedInspectie);
+
+      setCompletionOverlay((prev) => ({
+        ...prev,
+        logged: true,
+      }));
+    } catch (error) {
+      showMessage('Loggen naar database is mislukt (simulatie).', 'error');
+    } finally {
+      setLoggingDatabase(false);
+    }
+  };
+
+  const sluitCompletionOverlay = () => {
+    setCompletionOverlay({
+      visible: false,
+      logged: false,
+      summary: null,
     });
-
-    // Wissers
-    wissersData.forEach(wisser => {
-      const wisserType = wisser.artikel || 'Onbekend';
-      if ((wisser.aantal_geteld ?? 0) === 0) {
-        serviceTodos.push(`Controleer of wisser van type '${wisserType}' verwijderd moet worden.`);
-      }
-      if ((wisser.opmerkingen || '').trim()) {
-        serviceTodos.push(`Controleer opmerking bij wisser van type '${wisserType}': ${wisser.opmerkingen}`);
-      }
-      // Upsell kans bij hoog verbruik (optioneel, als vuil percentage beschikbaar is)
-      if (wisser.vuil_percentage !== undefined && wisser.vuil_percentage !== null) {
-        const perc = parseFloat(wisser.vuil_percentage);
-        if (!isNaN(perc) && perc > 70) {
-          serviceTodos.push(`Upsell kans: ${wisserType} heeft hoog verbruik (${perc}% vuil). Overweeg extra wissers aan te bieden.`);
-        }
-      }
-    });
-
-    // Toebehoren
-    toebehorenData.forEach(acc => {
-      const accType = acc.artikel || 'Onbekend';
-      const aantal = acc.aantal ?? 0;
-      if (acc.vervangen && aantal > 0) {
-        serviceTodos.push(`Vervang ${aantal}x '${accType}' bij wissers.`);
-      }
-      if ((acc.opmerkingen || '').trim()) {
-        serviceTodos.push(`Controleer opmerking bij toebehoren '${accType}': ${acc.opmerkingen}`);
-      }
-    });
-
-    setTodoList(serviceTodos.map(text => ({ text, done: false })));
-    setKlantenserviceTodoList(klantenserviceTodos.map(text => ({ text, done: false })));
   };
 
   const sendToTMS = async () => {
@@ -1093,6 +1235,15 @@ function App() {
     showMessage('Wijzigingen gelogd en to-do\'s voor klantenservice toegevoegd!', 'success');
   };
 
+  const completionSummary = completionOverlay.summary
+    ? {
+        ...completionOverlay.summary,
+        plannedMomentLabel:
+          completionOverlay.summary.plannedMomentLabel ||
+          [completionOverlay.summary.datum, completionOverlay.summary.tijd].filter(Boolean).join(' • '),
+      }
+    : null;
+
   if (!isAuthenticated) {
     return (
       <div className="App">
@@ -1249,6 +1400,118 @@ function App() {
         )}
 
       </div>
+      {completionOverlay.visible && completionSummary && (
+        <div className="completion-overlay">
+          <div
+            className="completion-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="completion-title"
+          >
+            {completionOverlay.logged && (
+              <div className="completion-toast success">
+                ✅ Vastgelegd in database (simulatie)
+              </div>
+            )}
+            <div className="completion-icon" aria-hidden="true">
+              <span>✨</span>
+            </div>
+            <h2 id="completion-title">Inspectie opgeslagen</h2>
+            <p className="completion-subtitle">
+              Inspectie voor <strong>{completionSummary.klantnaam}</strong> ({completionSummary.relatienummer}) staat klaar voor opvolging.
+            </p>
+            <div className={`completion-status completion-status-${completionSummary.statusCode}`}>
+              <span className="status-label">{completionSummary.statusLabel}</span>
+              <span className="status-meta">
+                {completionSummary.totalIssues} aandachtspunten • {completionSummary.criticalIssues} kritisch
+              </span>
+            </div>
+            <div className="completion-meta">
+              <div>
+                <span className="meta-label">Servicemedewerker</span>
+                <span className="meta-value">{completionSummary.inspecteur || '-'}</span>
+              </div>
+              <div>
+                <span className="meta-label">Inspectiemoment</span>
+                <span className="meta-value">{completionSummary.plannedMomentLabel || '-'}</span>
+              </div>
+              <div>
+                <span className="meta-label">Opgeslagen op</span>
+                <span className="meta-value">{completionSummary.savedAtLabel || '-'}</span>
+              </div>
+            </div>
+            <div className="completion-metrics">
+              <div className="completion-metric">
+                <span className="metric-label">Service acties</span>
+                <span className="metric-value">{completionSummary.serviceTodoCount}</span>
+              </div>
+              <div className="completion-metric">
+                <span className="metric-label">Klantenservice</span>
+                <span className="metric-value">{completionSummary.klantenTodoCount}</span>
+              </div>
+              <div className="completion-metric">
+                <span className="metric-label">Kritiek</span>
+                <span className="metric-value">{completionSummary.criticalIssues}</span>
+              </div>
+              <div className="completion-metric">
+                <span className="metric-label">Matten issues</span>
+                <span className="metric-value">{completionSummary.mattenIssues}</span>
+              </div>
+            </div>
+            {completionSummary.previewTodos && completionSummary.previewTodos.length > 0 && (
+              <div className="completion-highlights">
+                <span className="highlights-label">Volgende stappen</span>
+                <ul>
+                  {completionSummary.previewTodos.map((todo, index) => (
+                    <li key={`service-${index}`}>{todo}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {completionSummary.klantenPreview && completionSummary.klantenPreview.length > 0 && (
+              <div className="completion-highlights secondary">
+                <span className="highlights-label">Voor klantenservice</span>
+                <ul>
+                  {completionSummary.klantenPreview.map((todo, index) => (
+                    <li key={`klant-${index}`}>{todo}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div className="completion-actions">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={logInspectieNaarDatabase}
+                disabled={loggingDatabase || completionOverlay.logged}
+              >
+                {completionOverlay.logged
+                  ? 'Gelogd in database'
+                  : loggingDatabase
+                    ? 'Logt naar database...'
+                    : 'Log naar database'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-success"
+                onClick={() => {
+                  sluitCompletionOverlay();
+                  setActiveTab('todos');
+                }}
+              >
+                Bekijk to-do's
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={sluitCompletionOverlay}
+              >
+                Terug naar app
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
