@@ -1,5 +1,5 @@
 const DEFAULT_CONFIG = {
-  mode: process.env.REACT_APP_DATA_MODE || 'csv',
+  mode: process.env.REACT_APP_DATA_MODE || 'api',
   endpoints: {
     contactsCsv: '/data/Contactpersonenlavans.csv',
     standaardMattenCsv: '/data/matten_standaard.csv',
