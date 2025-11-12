@@ -32,6 +32,8 @@ jobs:
                const coredemo = require('@actions/core')
                return await coredemo.getIDToken()
            result-encoding: string
+      - name: Prepare git extraheader placeholder
+        run: git config --global --add http.https://github.com/.extraheader "AUTHORIZATION: basic placeholder"
       - name: Reset git extraheader (ignore if missing)
         run: git config --global --unset-all http.https://github.com/.extraheader || true
       - name: Build And Deploy
