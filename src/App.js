@@ -526,6 +526,8 @@ function App() {
         created_at: new Date().toISOString()
       };
 
+      localStorage.setItem('lavans_laatste_inspectie', JSON.stringify(inspectieData));
+
       showMessage('Inspectie succesvol opgeslagen!', 'success');
       
       // Genereer to-do's

@@ -50,7 +50,7 @@ const InspectieTab = ({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [setShowKlantDropdown]);
 
   return (
   <div className="card">
