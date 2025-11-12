@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { format } from 'date-fns';
 import jsPDF from 'jspdf';
 import './App.css';
@@ -358,6 +358,258 @@ const AUTH_USERS = [
   }
 ];
 
+const CSV_SEPARATOR = ';';
+
+const splitCsvLine = (line) => {
+  const cells = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === CSV_SEPARATOR && !inQuotes) {
+      cells.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  cells.push(current);
+  return cells;
+};
+
+const sanitizeCsvCell = (value) => {
+  if (value === undefined || value === null) return '';
+  let result = value;
+  if (typeof result !== 'string') {
+    result = String(result);
+  }
+  result = result.replace(/^\uFEFF/, '').trim();
+  if (!result) return '';
+  if ((result.startsWith('"') && result.endsWith('"')) || (result.startsWith("'") && result.endsWith("'"))) {
+    result = result.slice(1, -1);
+  }
+  return result.replace(/""/g, '"').trim();
+};
+
+const tidyName = (value) => {
+  const text = sanitizeCsvCell(value)
+    .replace(/[`´‘’]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!text || /^[-.\s]+$/.test(text)) {
+    return '';
+  }
+  return text.replace(/^[-.\s]+|[-.\s]+$/g, '');
+};
+
+const sanitizePhone = (value) => {
+  const phone = sanitizeCsvCell(value).replace(/[^0-9+]/g, ' ').replace(/\s+/g, ' ').trim();
+  return phone;
+};
+
+const choosePhone = (phone, mobile) => {
+  const primary = sanitizePhone(phone);
+  if (primary) return primary;
+  return sanitizePhone(mobile);
+};
+
+const normalizeRelatienummer = (value) => {
+  const raw = sanitizeCsvCell(value);
+  if (!raw) return '';
+  const withoutBracket = raw.split('[')[0];
+  const base = withoutBracket.split(/\s/)[0];
+  return base.replace(/[^0-9A-Za-z]/g, '').toUpperCase();
+};
+
+const normalizeRelatieKey = (value) => {
+  const raw = sanitizeCsvCell(value);
+  if (!raw) return '';
+  return raw
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/&/g, ' en ')
+    .replace(/[^a-z0-9]+/g, '')
+    .trim();
+};
+
+const booleanFromJaNee = (value) => {
+  const normalized = sanitizeCsvCell(value).toLowerCase();
+  if (!normalized) return false;
+  return ['ja', 'yes', 'y', 'true', '1'].includes(normalized);
+};
+
+const parseContactpersonenCsv = (csvText) => {
+  const lines = csvText.split(/\r?\n/).filter((line) => line.trim().length > 0);
+  if (lines.length <= 1) return [];
+  const header = splitCsvLine(lines[0]).map(sanitizeCsvCell);
+  const rows = [];
+
+  for (let i = 1; i < lines.length; i += 1) {
+    const columns = splitCsvLine(lines[i]);
+    if (columns.length === 1 && columns[0].trim() === '') {
+      continue;
+    }
+    if (columns.length !== header.length) {
+      continue;
+    }
+    const record = {};
+    header.forEach((key, index) => {
+      record[key] = sanitizeCsvCell(columns[index]);
+    });
+    rows.push(record);
+  }
+  return rows;
+};
+
+const computeContactPriority = (contact) => {
+  let score = 0;
+  if (contact.nog_in_dienst) score += 5;
+  if (contact.routecontact) score += 4;
+  if (contact.operationeel) score += 3;
+  if (contact.financieel) score += 2;
+  if (contact.beslisser) score += 1;
+  if (contact.email) score += 0.5;
+  return score;
+};
+
+const sortContacts = (contacts) =>
+  [...contacts].sort((a, b) => computeContactPriority(b) - computeContactPriority(a));
+
+const transformCsvRecord = (raw) => {
+  const klantnaam = sanitizeCsvCell(raw.Relatie);
+  const relatienummer = normalizeRelatienummer(raw.Relatienummer);
+
+  if (!relatienummer && !klantnaam) {
+    return null;
+  }
+
+  const contact = {
+    bron: 'catalogus',
+    relatienummer,
+    relatienummerRaw: sanitizeCsvCell(raw.Relatienummer),
+    relatieKey: normalizeRelatieKey(klantnaam),
+    klantnaam,
+    voornaam: tidyName(raw.Voornaam),
+    tussenvoegsel: tidyName(raw.Tussenvoegsel),
+    achternaam: tidyName(raw.Achternaam),
+    email: sanitizeCsvCell(raw['E-mailadres']).toLowerCase(),
+    telefoon: choosePhone(raw['Telefoonnummer'], raw['Mobiel nummer']),
+    mobiel: sanitizePhone(raw['Mobiel nummer']),
+    functie: sanitizeCsvCell(raw.Functies) || sanitizeCsvCell(raw['Aanvullende functie omschrijving']),
+    routecontact: booleanFromJaNee(raw.Routecontact),
+    operationeel: booleanFromJaNee(raw['Operationeel contact']),
+    financieel: booleanFromJaNee(raw['Financieel contact']),
+    beslisser: booleanFromJaNee(raw['Rol beslisser']),
+    rolGebruiker: sanitizeCsvCell(raw['Rol gebruiker']),
+    nog_in_dienst: booleanFromJaNee(raw.Actief),
+    klantenportaal: sanitizeCsvCell(raw['Klantenportaal gebruikersnaam']),
+  };
+
+  if (!contact.voornaam && !contact.achternaam) {
+    const fallback = tidyName(raw.Voornaam || raw.Achternaam || '');
+    if (fallback.includes(' ')) {
+      const parts = fallback.split(' ');
+      contact.voornaam = parts.slice(0, -1).join(' ');
+      contact.achternaam = parts.slice(-1).join('');
+    } else {
+      contact.voornaam = fallback;
+    }
+  }
+
+  return contact;
+};
+
+const buildContactCatalogFromRecords = (records) => {
+  const byRelatienummer = {};
+  const byRelatie = {};
+
+  records.forEach((record) => {
+    const contact = transformCsvRecord(record);
+    if (!contact) return;
+
+    if (contact.relatienummer) {
+      if (!byRelatienummer[contact.relatienummer]) {
+        byRelatienummer[contact.relatienummer] = [];
+      }
+      byRelatienummer[contact.relatienummer].push(contact);
+    }
+
+    if (contact.relatieKey) {
+      if (!byRelatie[contact.relatieKey]) {
+        byRelatie[contact.relatieKey] = [];
+      }
+      byRelatie[contact.relatieKey].push(contact);
+    }
+  });
+
+  Object.keys(byRelatienummer).forEach((key) => {
+    byRelatienummer[key] = sortContacts(byRelatienummer[key]);
+  });
+  Object.keys(byRelatie).forEach((key) => {
+    byRelatie[key] = sortContacts(byRelatie[key]);
+  });
+
+  return {
+    byRelatienummer,
+    byRelatie,
+    total: Object.values(byRelatienummer).reduce((sum, list) => sum + list.length, 0),
+  };
+};
+
+const cloneContactRecord = (record) => ({
+  ...record,
+  routecontact: !!record.routecontact,
+  operationeel: !!record.operationeel,
+  financieel: !!record.financieel,
+  beslisser: !!record.beslisser,
+  nog_in_dienst: record.nog_in_dienst !== false,
+  bron: record.bron || 'handmatig',
+});
+
+const resolveContactsFromCatalog = (catalog, relatienummer, klantnaam, fallback = []) => {
+  const hasCatalog = catalog && catalog.loaded;
+  const normalizedRelNr = normalizeRelatienummer(relatienummer);
+  const normalizedName = normalizeRelatieKey(klantnaam);
+
+  if (hasCatalog && normalizedRelNr && catalog.byRelatienummer[normalizedRelNr]) {
+    return catalog.byRelatienummer[normalizedRelNr].map(cloneContactRecord);
+  }
+
+  if (hasCatalog && normalizedName && catalog.byRelatie[normalizedName]) {
+    return catalog.byRelatie[normalizedName].map(cloneContactRecord);
+  }
+
+  return (fallback || []).map(cloneContactRecord);
+};
+
+const getPrimaryContactForForm = (contacts, formatNaam) => {
+  if (!contacts || contacts.length === 0) {
+    return null;
+  }
+  const preferred =
+    contacts.find((contact) => contact.routecontact) ||
+    contacts.find((contact) => contact.operationeel) ||
+    contacts[0];
+
+  return {
+    contact: preferred,
+    displayName: formatNaam(
+      preferred.voornaam,
+      preferred.tussenvoegsel,
+      preferred.achternaam
+    ),
+    email: preferred.email || '',
+  };
+};
 
 function App() {
   const [activeTab, setActiveTab] = useState('inspectie');
@@ -407,6 +659,15 @@ function App() {
   const [todoList, setTodoList] = useState([]);
   const [klantenserviceTodoList, setKlantenserviceTodoList] = useState([]);
   const [contactpersonen, setContactpersonen] = useState([]);
+  const [contactCatalog, setContactCatalog] = useState({
+    loaded: false,
+    byRelatienummer: {},
+    byRelatie: {},
+    total: 0,
+    error: null
+  });
+  const catalogLoadingRef = useRef(false);
+  const messageTimerRef = useRef(null);
   const [completionOverlay, setCompletionOverlay] = useState({
     visible: false,
     logged: false,
@@ -416,12 +677,12 @@ function App() {
   const [lastSavedInspectie, setLastSavedInspectie] = useState(null);
 
   // Helper functies
-  const formatNaam = (voornaam, tussenvoegsel, achternaam) => {
+  const formatNaam = useCallback((voornaam, tussenvoegsel, achternaam) => {
     const v = voornaam && voornaam !== 'None' ? voornaam : '';
     const t = tussenvoegsel && tussenvoegsel !== 'None' ? tussenvoegsel : '';
     const a = achternaam && achternaam !== 'None' ? achternaam : '';
     return `${v} ${t} ${a}`.replace(/\s+/g, ' ').trim();
-  };
+  }, []);
 
   const berekenLeeftijd = (barcode) => {
     if (!barcode || barcode.toString().length < 7) {
@@ -486,6 +747,96 @@ function App() {
   const boolToJaNee = (val) => {
     return val ? 'Ja' : 'Nee';
   };
+
+  const showMessage = useCallback((text, type = 'info') => {
+    setMessage(text);
+    setMessageType(type);
+    if (messageTimerRef.current) {
+      clearTimeout(messageTimerRef.current);
+    }
+    messageTimerRef.current = setTimeout(() => {
+      setMessage('');
+      setMessageType('');
+      messageTimerRef.current = null;
+    }, 5000);
+  }, []);
+
+  const loadContactCatalog = useCallback(async () => {
+    if (contactCatalog.loaded || catalogLoadingRef.current) {
+      return;
+    }
+    catalogLoadingRef.current = true;
+    try {
+      const response = await fetch('/data/Contactpersonenlavans.csv', { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error(`CSV laden mislukt (status ${response.status})`);
+      }
+      const text = await response.text();
+      const rows = parseContactpersonenCsv(text);
+      const catalog = buildContactCatalogFromRecords(rows);
+
+      setContactCatalog({
+        loaded: true,
+        byRelatienummer: catalog.byRelatienummer,
+        byRelatie: catalog.byRelatie,
+        total: catalog.total,
+        error: null
+      });
+
+      const activeRelatienummer = (selectedKlant?.relatienummer || formData.relatienummer || '').trim();
+      const activeKlantnaam = selectedKlant?.klantnaam || formData.klantnaam || '';
+      const existingContacts = contactpersonen.some((contact) => contact.bron === 'catalogus')
+        ? contactpersonen
+        : [];
+
+      const resolvedContacts = resolveContactsFromCatalog(
+        { loaded: true, byRelatienummer: catalog.byRelatienummer, byRelatie: catalog.byRelatie },
+        activeRelatienummer,
+        activeKlantnaam,
+        existingContacts.length ? existingContacts : contactpersonen
+      );
+
+      if (resolvedContacts.length > 0 && !contactpersonen.some((contact) => contact.bron === 'catalogus')) {
+        setContactpersonen(resolvedContacts);
+        const primary = getPrimaryContactForForm(resolvedContacts, formatNaam);
+        if (primary) {
+          setFormData((prev) => {
+            const nextEmail = primary.email || prev.contact_email;
+            if (prev.contactpersoon === primary.displayName && prev.contact_email === nextEmail) {
+              return prev;
+            }
+            return {
+              ...prev,
+              contactpersoon: primary.displayName,
+              contact_email: nextEmail
+            };
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Fout bij inladen contactpersonen CSV:', error);
+      setContactCatalog({
+        loaded: false,
+        byRelatienummer: {},
+        byRelatie: {},
+        total: 0,
+        error: error.message || 'Onbekende fout tijdens laden van contactpersonen'
+      });
+      showMessage('Kon contactpersonen uit CRM niet laden. Gebruik tijdelijk het handmatige overzicht.', 'error');
+    } finally {
+      catalogLoadingRef.current = false;
+    }
+  }, [
+    contactCatalog.loaded,
+    contactpersonen,
+    formatNaam,
+    formData.klantnaam,
+    formData.relatienummer,
+    selectedKlant,
+    setContactpersonen,
+    setFormData,
+    showMessage
+  ]);
 
   const analyseInspectie = (inspectieData) => {
     const serviceTodos = [];
@@ -638,15 +989,6 @@ function App() {
     };
   };
 
-  const showMessage = (text, type = 'info') => {
-    setMessage(text);
-    setMessageType(type);
-    setTimeout(() => {
-      setMessage('');
-      setMessageType('');
-    }, 5000);
-  };
-
   const loadData = useCallback(() => {
     // Laad hardcoded data
     setStandaardMattenData([...HARDCODED_STANDAARD_MATTEN]);
@@ -679,9 +1021,16 @@ function App() {
     }
   }, []);
 
+  useEffect(() => () => {
+    if (messageTimerRef.current) {
+      clearTimeout(messageTimerRef.current);
+    }
+  }, []);
+
   useEffect(() => {
     if (isAuthenticated) {
       loadData();
+      loadContactCatalog();
     } else {
       setStandaardMattenData([]);
       setLogomattenData([]);
@@ -693,10 +1042,19 @@ function App() {
       setSelectedKlant(null);
       setKlantSearchTerm('');
       setShowKlantDropdown(false);
+      setContactCatalog({
+        loaded: false,
+        byRelatienummer: {},
+        byRelatie: {},
+        total: 0,
+        error: null
+      });
+      catalogLoadingRef.current = false;
     }
   }, [
     isAuthenticated,
     loadData,
+    loadContactCatalog,
     setContactpersonen,
     setKlantenserviceTodoList,
     setKlantSearchTerm,
@@ -711,17 +1069,24 @@ function App() {
 
   // Klant selectie functies
   const handleKlantSelect = (klant) => {
+    const resolvedContacts = resolveContactsFromCatalog(
+      contactCatalog,
+      klant.relatienummer,
+      klant.klantnaam,
+      klant.contactpersonen || []
+    );
+
+    const primary = getPrimaryContactForForm(resolvedContacts, formatNaam);
+
     setSelectedKlant(klant);
     setFormData(prev => ({
       ...prev,
       relatienummer: klant.relatienummer,
       klantnaam: klant.klantnaam,
-      contactpersoon: klant.contactpersonen.find(cp => cp.routecontact)?.voornaam + ' ' + 
-                     (klant.contactpersonen.find(cp => cp.routecontact)?.tussenvoegsel || '') + ' ' + 
-                     klant.contactpersonen.find(cp => cp.routecontact)?.achternaam || '',
-      contact_email: klant.contactpersonen.find(cp => cp.routecontact)?.email || ''
+      contactpersoon: primary ? primary.displayName : '',
+      contact_email: primary ? primary.email : ''
     }));
-    setContactpersonen(klant.contactpersonen);
+    setContactpersonen(resolvedContacts);
     setKlantSearchTerm(klant.klantnaam);
     setShowKlantDropdown(false);
   };
