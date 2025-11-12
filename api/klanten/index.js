@@ -11,19 +11,30 @@ module.exports = async function (context, req) {
     request.input('search', sql.NVarChar(200), search ? `%${search}%` : null);
 
     const result = await request.query(`
+      WITH bron AS (
+        SELECT
+          rel_norm = UPPER(REPLACE(REPLACE(ISNULL(d.Relatienummer, ''), ' ', ''), '[', '')),
+          naam = ISNULL(d.Naam, ''),
+          adres = ISNULL(d.Adres, '')
+        FROM dbo.DatamodelExcel1 d
+        WHERE d.Relatienummer IS NOT NULL AND d.Relatienummer <> ''
+      )
       SELECT
-        relatienummer = UPPER(REPLACE(REPLACE(ISNULL(k.relatienummer, ''), ' ', ''), '[', '')),
-        klantnaam = ISNULL(k.klantnaam, ''),
-        adres = ISNULL(k.adres, ''),
-        postcode = ISNULL(k.postcode, ''),
-        plaats = ISNULL(k.plaats, ''),
-        telefoon = ISNULL(k.telefoon, ''),
-        email = ISNULL(k.email, ''),
-        actief = ISNULL(k.actief, 1)
-      FROM dbo.Klanten k
-      WHERE (@rel IS NULL OR k.relatienummer = @rel)
-        AND (@search IS NULL OR k.klantnaam LIKE @search OR k.relatienummer LIKE @search)
-      ORDER BY k.klantnaam;
+        relatienummer = b.rel_norm,
+        klantnaam = MAX(b.naam),
+        adres = MAX(b.adres),
+        postcode = '',
+        plaats = '',
+        telefoon = '',
+        email = '',
+        actief = 1
+      FROM bron b
+      WHERE (@rel IS NULL OR b.rel_norm = @rel)
+      GROUP BY b.rel_norm
+      HAVING @search IS NULL
+         OR MAX(b.naam) LIKE @search
+         OR b.rel_norm LIKE @search
+      ORDER BY MAX(b.naam);
     `);
 
     context.res = {

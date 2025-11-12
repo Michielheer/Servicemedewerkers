@@ -1,6 +1,14 @@
 const { getPool, sql } = require('../shared/db');
 
 const NORMALIZE_REL_QUERY = `
+WITH klanten AS (
+  SELECT
+    rel_norm = UPPER(REPLACE(REPLACE(ISNULL(d.Relatienummer, ''), ' ', ''), '[', '')),
+    klantnaam = MAX(ISNULL(d.Naam, ''))
+  FROM dbo.DatamodelExcel1 d
+  WHERE d.Relatienummer IS NOT NULL AND d.Relatienummer <> ''
+  GROUP BY UPPER(REPLACE(REPLACE(ISNULL(d.Relatienummer, ''), ' ', ''), '[', ''))
+)
 SELECT
   Relatienummer = UPPER(REPLACE(REPLACE(ISNULL(c.relatienummer, ''), ' ', ''), '[', '')),
   Voornaam = ISNULL(c.voornaam, ''),
@@ -20,9 +28,9 @@ SELECT
   Actief = CASE WHEN c.nog_in_dienst = 1 THEN 'Ja' ELSE 'Nee' END,
   [Klantenportaal gebruikersnaam] = ISNULL(c.klantenportaal, '')
 FROM dbo.Contactpersonen c
-LEFT JOIN dbo.Klanten k
-  ON k.relatienummer = c.relatienummer
-WHERE (@rel IS NULL OR c.relatienummer = @rel)
+LEFT JOIN klanten k
+  ON k.rel_norm = UPPER(REPLACE(REPLACE(ISNULL(c.relatienummer, ''), ' ', ''), '[', ''))
+WHERE (@rel IS NULL OR UPPER(REPLACE(REPLACE(ISNULL(c.relatienummer, ''), ' ', ''), '[', '')) = @rel)
   AND (@relatieKey IS NULL OR k.klantnaam = @relatieKey);
 `;
 
