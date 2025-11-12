@@ -34,6 +34,23 @@ code {
   align-items: center;
 }
 
+.header-top {
+  width: 100%;
+  max-width: 1100px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 0 20px;
+  box-sizing: border-box;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
 .header-logo {
   max-width: 300px;
   max-height: 120px;
@@ -41,6 +58,47 @@ code {
   height: auto;
   margin-bottom: 15px;
   object-fit: contain;
+}
+
+.header-user {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  text-align: left;
+}
+
+.header-user-initials {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.18);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: white;
+  text-transform: uppercase;
+}
+
+.header-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.header-user-info span:first-child {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.header-user-info span:last-child {
+  font-size: 0.85rem;
+  opacity: 0.9;
 }
 
 .header h1 {
@@ -115,6 +173,22 @@ code {
   background-color: #5a6268;
 }
 
+.btn-small {
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  border-radius: 999px;
+}
+
+.logout-btn {
+  background: rgba(255, 255, 255, 0.18);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+}
+
+.logout-btn:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
 .btn-success {
   background-color: #28a745;
   color: white;
@@ -184,6 +258,43 @@ code {
   background-color: #d1ecf1;
   color: #0c5460;
   border: 1px solid #bee5eb;
+}
+
+.login-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 300px;
+}
+
+.login-card {
+  max-width: 420px;
+  width: 100%;
+}
+
+.login-subtitle {
+  margin: 8px 0 24px;
+  color: #53629b;
+  font-size: 0.95rem;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.login-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.login-hint {
+  font-size: 0.85rem;
+  color: #6c7aa0;
+  text-align: right;
 }
 
 .tabs {
@@ -322,6 +433,25 @@ code {
     margin-bottom: 20px;
   }
   
+  .header-top {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 0 10px;
+  }
+  
+  .header-user {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .header-user-initials {
+    width: 36px;
+    height: 36px;
+    font-size: 0.9rem;
+  }
+  
   .header-logo {
     max-width: 200px;
     max-height: 80px;
@@ -364,6 +494,26 @@ code {
   .form-control {
     min-height: 44px;
     font-size: 16px; /* Prevents zoom on iOS */
+  }
+  
+  .btn-small {
+    width: 100%;
+    text-align: center;
+    border-radius: 8px;
+  }
+  
+  .login-card {
+    max-width: 100%;
+  }
+  
+  .login-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  
+  .login-hint {
+    text-align: center;
   }
   
   .btn {

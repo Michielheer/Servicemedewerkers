@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
 import jsPDF from 'jspdf';
 import './App.css';
 import InspectieTab from './InspectieTab';
 import TodoTab from './TodoTab';
 import ContactpersonenTab from './ContactpersonenTab';
+import LoginScreen from './LoginScreen';
 
 // Hardcoded data - Standaard matten (productnummer start met 00M)
 const HARDCODED_STANDAARD_MATTEN = [
@@ -338,12 +339,33 @@ const HARDCODED_CRM_KLANTEN = [
   }
 ];
 
+const AUTH_USERS = [
+  {
+    email: 'angelo@lavans.nl',
+    password: 'Lavans2025!',
+    name: 'Angelo Rossi',
+    role: 'Servicemedewerker',
+    initials: 'AR',
+    shortName: 'Angelo'
+  },
+  {
+    email: 'planning@lavans.nl',
+    password: 'LavansService!',
+    name: 'Planning Team',
+    role: 'Planner',
+    initials: 'PT',
+    shortName: 'Planning'
+  }
+];
+
 
 function App() {
   const [activeTab, setActiveTab] = useState('inspectie');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -467,7 +489,7 @@ function App() {
     }, 5000);
   };
 
-  const loadData = () => {
+  const loadData = useCallback(() => {
     // Laad hardcoded data
     setStandaardMattenData([...HARDCODED_STANDAARD_MATTEN]);
     setLogomattenData([...HARDCODED_LOGOMATTEN]);
@@ -479,7 +501,55 @@ function App() {
     if (defaultKlant) {
       setContactpersonen(defaultKlant.contactpersonen);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('lavans_auth_user');
+    if (storedUser) {
+      try {
+        const parsed = JSON.parse(storedUser);
+        setCurrentUser(parsed);
+        setIsAuthenticated(true);
+        setFormData(prev => ({
+          ...prev,
+          inspecteur: parsed.shortName || parsed.name || prev.inspecteur
+        }));
+      } catch (error) {
+        console.warn('Kon opgeslagen gebruiker niet lezen:', error);
+        localStorage.removeItem('lavans_auth_user');
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadData();
+    } else {
+      setStandaardMattenData([]);
+      setLogomattenData([]);
+      setWissersData([]);
+      setToebehorenData([]);
+      setTodoList([]);
+      setKlantenserviceTodoList([]);
+      setContactpersonen([]);
+      setSelectedKlant(null);
+      setKlantSearchTerm('');
+      setShowKlantDropdown(false);
+    }
+  }, [
+    isAuthenticated,
+    loadData,
+    setContactpersonen,
+    setKlantenserviceTodoList,
+    setKlantSearchTerm,
+    setLogomattenData,
+    setSelectedKlant,
+    setShowKlantDropdown,
+    setStandaardMattenData,
+    setTodoList,
+    setToebehorenData,
+    setWissersData
+  ]);
 
   // Klant selectie functies
   const handleKlantSelect = (klant) => {
@@ -496,6 +566,66 @@ function App() {
     setContactpersonen(klant.contactpersonen);
     setKlantSearchTerm(klant.klantnaam);
     setShowKlantDropdown(false);
+  };
+
+  const handleLogin = async ({ email, password }) => {
+    setLoading(true);
+    try {
+      const normalizedEmail = (email || '').trim().toLowerCase();
+      const normalizedPassword = (password || '').trim();
+      const user = AUTH_USERS.find(u => u.email === normalizedEmail);
+
+      if (!user || user.password !== normalizedPassword) {
+        showMessage('Onjuiste combinatie van e-mailadres en wachtwoord.', 'error');
+        return false;
+      }
+
+      const userInfo = {
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        initials: user.initials,
+        shortName: user.shortName
+      };
+
+      setIsAuthenticated(true);
+      setCurrentUser(userInfo);
+      localStorage.setItem('lavans_auth_user', JSON.stringify(userInfo));
+
+      setFormData(prev => ({
+        ...prev,
+        inspecteur: user.shortName || user.name,
+        datum: format(new Date(), 'yyyy-MM-dd'),
+        tijd: format(new Date(), 'HH:mm')
+      }));
+      setActiveTab('inspectie');
+      showMessage(`Welkom terug, ${user.shortName || user.name}!`, 'success');
+      return true;
+    } catch (error) {
+      console.error('Login fout:', error);
+      showMessage('Er ging iets mis tijdens het inloggen. Probeer het opnieuw.', 'error');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('lavans_auth_user');
+    localStorage.removeItem('lavans_laatste_inspectie');
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+    setFormData({
+      relatienummer: 'K001',
+      klantnaam: 'Multihuur BV',
+      contactpersoon: 'Julian Vervoort',
+      contact_email: 'verhuur@multihuur.nl',
+      inspecteur: 'Angelo',
+      datum: format(new Date(), 'yyyy-MM-dd'),
+      tijd: format(new Date(), 'HH:mm'),
+      algemeen_values: {}
+    });
+    showMessage('Je bent uitgelogd.', 'info');
   };
 
   const filteredKlanten = HARDCODED_CRM_KLANTEN.filter(klant => 
@@ -963,18 +1093,69 @@ function App() {
     showMessage('Wijzigingen gelogd en to-do\'s voor klantenservice toegevoegd!', 'success');
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  if (!isAuthenticated) {
+    return (
+      <div className="App">
+        <div className="header">
+          <div className="header-top">
+            <div className="header-brand">
+              <img 
+                src="/Logo-Lavans-png.png" 
+                alt="Lavans logo" 
+                className="header-logo"
+              />
+            </div>
+          </div>
+          <h1>Lavans Service App</h1>
+          <p>Ideaal Servicemoment</p>
+        </div>
+
+        <div className="container">
+          {message && (
+            <div className={`alert alert-${messageType}`}>
+              {message}
+            </div>
+          )}
+
+          <LoginScreen
+            onLogin={handleLogin}
+            loading={loading}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="App">
       <div className="header">
-        <img 
-          src="/Logo-Lavans-png.png" 
-          alt="Lavans logo" 
-          className="header-logo"
-        />
+        <div className="header-top">
+          <div className="header-brand">
+            <img 
+              src="/Logo-Lavans-png.png" 
+              alt="Lavans logo" 
+              className="header-logo"
+            />
+          </div>
+          {currentUser && (
+            <div className="header-user">
+              <div className="header-user-initials">
+                {currentUser.initials || (currentUser.name ? currentUser.name.substring(0, 2).toUpperCase() : '?')}
+              </div>
+              <div className="header-user-info">
+                <span>{currentUser.name}</span>
+                <span>{currentUser.role}</span>
+              </div>
+              <button
+                type="button"
+                className="btn btn-secondary btn-small logout-btn"
+                onClick={handleLogout}
+              >
+                Uitloggen
+              </button>
+            </div>
+          )}
+        </div>
         <h1>Lavans Service App</h1>
         <p>Ideaal Servicemoment</p>
       </div>
