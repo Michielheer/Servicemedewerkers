@@ -341,20 +341,20 @@ const HARDCODED_CRM_KLANTEN = [
 
 const AUTH_USERS = [
   {
-    email: 'angelo@lavans.nl',
-    password: 'Lavans2025!',
-    name: 'Angelo Rossi',
-    role: 'Servicemedewerker',
-    initials: 'AR',
-    shortName: 'Angelo'
+    email: 'michiel.heerkens@lavans.nl',
+    password: 'Herfst2025!',
+    name: 'Michiel Heerkens',
+    role: 'Service Manager',
+    initials: 'MH',
+    shortName: 'Michiel'
   },
   {
-    email: 'planning@lavans.nl',
-    password: 'LavansService!',
-    name: 'Planning Team',
-    role: 'Planner',
-    initials: 'PT',
-    shortName: 'Planning'
+    email: 'tijn.heerkens@lavans.nl',
+    password: 'Herfst2025!',
+    name: 'Tijn Heerkens',
+    role: 'Servicemedewerker',
+    initials: 'TH',
+    shortName: 'Tijn'
   }
 ];
 

@@ -54,9 +54,6 @@ const LoginScreen = ({ onLogin, loading }) => {
             >
               {loading ? 'Bezig...' : 'Inloggen'}
             </button>
-            <span className="login-hint">
-              Demo: angelo@lavans.nl / Lavans2025!
-            </span>
           </div>
         </form>
       </div>
