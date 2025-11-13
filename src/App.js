@@ -541,7 +541,6 @@ function App() {
   const [klantenserviceTodoList, setKlantenserviceTodoList] = useState([]);
   const [contactpersonen, setContactpersonen] = useState([]);
   const [klanten, setKlanten] = useState([]);
-  const [klantenLoaded, setKlantenLoaded] = useState(false);
   const [contactCatalog, setContactCatalog] = useState({
     loaded: false,
     byRelatienummer: {},
@@ -1247,39 +1246,47 @@ function App() {
     showMessage('Je bent uitgelogd.', 'info');
   };
 
-  // Laad klanten bij mount
+  // Laad klanten alleen bij zoeken (search-on-type)
   useEffect(() => {
-    if (!isAuthenticated || klantenLoaded) return;
+    if (!isAuthenticated) return;
 
-    const loadKlanten = async () => {
-      const config = getDataConfig();
+    const config = getDataConfig();
+    
+    // Als er geen zoekterm is, toon niets
+    if (!klantSearchTerm || klantSearchTerm.trim().length < 2) {
+      setKlanten([]);
+      return;
+    }
+
+    // Debounce: wacht 300ms na laatste toetsaanslag
+    const timeoutId = setTimeout(async () => {
       if (config.mode === 'api') {
         try {
-          const response = await fetch(config.endpoints.klantenApi, { cache: 'no-store' });
+          const response = await fetch(
+            `${config.endpoints.klantenApi}?search=${encodeURIComponent(klantSearchTerm)}`,
+            { cache: 'no-store' }
+          );
           if (response.ok) {
             const data = await response.json();
             setKlanten(data);
-            setKlantenLoaded(true);
           } else {
-            console.error('Klanten laden mislukt:', response.status);
-            setKlanten(HARDCODED_CRM_KLANTEN);
-            setKlantenLoaded(true);
+            console.error('Klanten zoeken mislukt:', response.status);
+            setKlanten([]);
           }
         } catch (error) {
-          console.error('Fout bij laden klanten:', error);
-          setKlanten(HARDCODED_CRM_KLANTEN);
-          setKlantenLoaded(true);
+          console.error('Fout bij zoeken klanten:', error);
+          setKlanten([]);
         }
       } else {
+        // CSV mode: gebruik hardcoded data
         setKlanten(HARDCODED_CRM_KLANTEN);
-        setKlantenLoaded(true);
       }
-    };
-    
-    loadKlanten();
-  }, [isAuthenticated, klantenLoaded]);
+    }, 300);
 
-  const filteredKlanten = (klanten.length > 0 ? klanten : HARDCODED_CRM_KLANTEN).filter(klant => 
+    return () => clearTimeout(timeoutId);
+  }, [isAuthenticated, klantSearchTerm]);
+
+  const filteredKlanten = klanten.filter(klant => 
     klant.klantnaam.toLowerCase().includes(klantSearchTerm.toLowerCase()) ||
     klant.relatienummer.toLowerCase().includes(klantSearchTerm.toLowerCase())
   );
