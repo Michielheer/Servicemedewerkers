@@ -1274,10 +1274,11 @@ function App() {
       }
     };
     
-    if (isLoggedIn) {
+    if (isLoggedIn && !klantenLoaded) {
       loadKlanten();
     }
-  }, [isLoggedIn, klantenLoaded]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn]);
 
   const filteredKlanten = (klanten.length > 0 ? klanten : HARDCODED_CRM_KLANTEN).filter(klant => 
     klant.klantnaam.toLowerCase().includes(klantSearchTerm.toLowerCase()) ||
