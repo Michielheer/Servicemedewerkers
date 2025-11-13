@@ -1,45 +1,50 @@
 const { getPool, sql } = require('../shared/db');
 
-// Email service (SendGrid of fallback naar console.log voor development)
+// Email service (Brevo/SendinBlue of fallback naar console.log voor development)
 const sendEmail = async (to, subject, htmlContent) => {
-  const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
+  const BREVO_API_KEY = process.env.BREVO_API_KEY;
   const FROM_EMAIL = process.env.FROM_EMAIL || 'inspectie@lavans.nl';
+  const FROM_NAME = process.env.FROM_NAME || 'Lavans Service';
   
-  if (!SENDGRID_API_KEY) {
-    console.warn('⚠️ SENDGRID_API_KEY niet ingesteld. Email wordt NIET verzonden.');
+  if (!BREVO_API_KEY) {
+    console.warn('⚠️ BREVO_API_KEY niet ingesteld. Email wordt NIET verzonden.');
     console.log('📧 Email preview:', { to, subject, htmlContent: htmlContent.substring(0, 200) });
-    return { success: false, message: 'SendGrid niet geconfigureerd', preview: true };
+    return { success: false, message: 'Brevo niet geconfigureerd', preview: true };
   }
 
   try {
-    const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${SENDGRID_API_KEY}`,
-        'Content-Type': 'application/json'
+        'api-key': BREVO_API_KEY,
+        'Content-Type': 'application/json',
+        'accept': 'application/json'
       },
       body: JSON.stringify({
-        personalizations: [{
-          to: [{ email: to }],
-          subject: subject
-        }],
-        from: { 
-          email: FROM_EMAIL,
-          name: 'Lavans Service'
+        sender: {
+          name: FROM_NAME,
+          email: FROM_EMAIL
         },
-        content: [{
-          type: 'text/html',
-          value: htmlContent
-        }]
+        to: [{
+          email: to,
+          name: to.split('@')[0] // Gebruik email username als naam
+        }],
+        subject: subject,
+        htmlContent: htmlContent
       })
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`SendGrid fout: ${response.status} - ${error}`);
+      const error = await response.json().catch(() => ({ message: 'Unknown error' }));
+      throw new Error(`Brevo fout: ${response.status} - ${error.message || JSON.stringify(error)}`);
     }
 
-    return { success: true, message: 'Email verzonden' };
+    const result = await response.json();
+    return { 
+      success: true, 
+      message: 'Email verzonden',
+      messageId: result.messageId 
+    };
   } catch (error) {
     console.error('Email versturen mislukt:', error);
     throw error;
