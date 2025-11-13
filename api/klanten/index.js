@@ -15,24 +15,30 @@ module.exports = async function (context, req) {
     const topClause = hasFilter ? '' : 'TOP 5000';
     
     const result = await request.query(`
+      WITH normalized AS (
+        SELECT
+          rel_norm = UPPER(REPLACE(REPLACE(ISNULL(Relatienummer, ''), ' ', ''), '[', '')),
+          naam = ISNULL(Naam, ''),
+          adres = ISNULL(Adres, '')
+        FROM dbo.DatamodelExcel1
+        WHERE Relatienummer IS NOT NULL AND Relatienummer <> ''
+          AND (@rel IS NULL OR UPPER(REPLACE(REPLACE(Relatienummer, ' ', ''), '[', '')) = @rel)
+      )
       SELECT ${topClause}
-        relatienummer = UPPER(REPLACE(REPLACE(ISNULL(d.Relatienummer, ''), ' ', ''), '[', '')),
-        klantnaam = ISNULL(MAX(d.Naam), ''),
-        adres = ISNULL(MAX(d.Adres), ''),
+        relatienummer = rel_norm,
+        klantnaam = MAX(naam),
+        adres = MAX(adres),
         postcode = '',
         plaats = '',
         telefoon = '',
         email = '',
         actief = 1
-      FROM dbo.DatamodelExcel1 d
-      WHERE d.Relatienummer IS NOT NULL 
-        AND d.Relatienummer <> ''
-        AND (@rel IS NULL OR UPPER(REPLACE(REPLACE(d.Relatienummer, ' ', ''), '[', '')) = @rel)
-      GROUP BY UPPER(REPLACE(REPLACE(ISNULL(d.Relatienummer, ''), ' ', ''), '[', ''))
-      HAVING @search IS NULL
-         OR MAX(d.Naam) LIKE @search
-         OR UPPER(REPLACE(REPLACE(d.Relatienummer, ' ', ''), '[', '')) LIKE @search
-      ORDER BY MAX(d.Naam);
+      FROM normalized
+      WHERE @search IS NULL
+         OR naam LIKE @search
+         OR rel_norm LIKE @search
+      GROUP BY rel_norm
+      ORDER BY MAX(naam);
     `);
 
     context.res = {
