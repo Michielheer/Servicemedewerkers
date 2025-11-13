@@ -11,30 +11,24 @@ module.exports = async function (context, req) {
     request.input('search', sql.NVarChar(200), search ? `%${search}%` : null);
 
     const result = await request.query(`
-      WITH bron AS (
-        SELECT
-          rel_norm = UPPER(REPLACE(REPLACE(ISNULL(d.Relatienummer, ''), ' ', ''), '[', '')),
-          naam = ISNULL(d.Naam, ''),
-          adres = ISNULL(d.Adres, '')
-        FROM dbo.DatamodelExcel1 d
-        WHERE d.Relatienummer IS NOT NULL AND d.Relatienummer <> ''
-      )
-      SELECT
-        relatienummer = b.rel_norm,
-        klantnaam = MAX(b.naam),
-        adres = MAX(b.adres),
+      SELECT TOP 5000
+        relatienummer = UPPER(REPLACE(REPLACE(ISNULL(d.Relatienummer, ''), ' ', ''), '[', '')),
+        klantnaam = ISNULL(MAX(d.Naam), ''),
+        adres = ISNULL(MAX(d.Adres), ''),
         postcode = '',
         plaats = '',
         telefoon = '',
         email = '',
         actief = 1
-      FROM bron b
-      WHERE (@rel IS NULL OR b.rel_norm = @rel)
-      GROUP BY b.rel_norm
+      FROM dbo.DatamodelExcel1 d
+      WHERE d.Relatienummer IS NOT NULL 
+        AND d.Relatienummer <> ''
+        AND (@rel IS NULL OR UPPER(REPLACE(REPLACE(d.Relatienummer, ' ', ''), '[', '')) = @rel)
+      GROUP BY UPPER(REPLACE(REPLACE(ISNULL(d.Relatienummer, ''), ' ', ''), '[', ''))
       HAVING @search IS NULL
-         OR MAX(b.naam) LIKE @search
-         OR b.rel_norm LIKE @search
-      ORDER BY MAX(b.naam);
+         OR MAX(d.Naam) LIKE @search
+         OR UPPER(REPLACE(REPLACE(d.Relatienummer, ' ', ''), '[', '')) LIKE @search
+      ORDER BY MAX(d.Naam);
     `);
 
     context.res = {

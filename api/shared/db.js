@@ -22,10 +22,12 @@ const getConfig = () => {
       trustServerCertificate: false
     },
     pool: {
-      max: 5,
+      max: 10,
       min: 0,
       idleTimeoutMillis: 30000
-    }
+    },
+    connectionTimeout: 30000,
+    requestTimeout: 30000
   };
 };
 
