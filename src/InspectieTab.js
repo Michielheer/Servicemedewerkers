@@ -34,6 +34,7 @@ const InspectieTab = ({
   showKlantDropdown,
   setShowKlantDropdown,
   filteredKlanten,
+  klantenLoading,
   handleKlantSelect
 }) => {
   const dropdownRef = useRef(null);
@@ -99,7 +100,22 @@ const InspectieTab = ({
             boxShadow: '0 4px 8px rgba(0,0,0,0.15)',
             borderRadius: '0 0 8px 8px'
           }}>
-            {filteredKlanten.length > 0 ? (
+            {klantenLoading ? (
+              <div style={{ padding: '15px', textAlign: 'center', color: '#007bff' }}>
+                <div style={{ 
+                  display: 'inline-block', 
+                  width: '20px', 
+                  height: '20px', 
+                  border: '3px solid #f3f3f3',
+                  borderTop: '3px solid #007bff',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }}></div>
+                <div style={{ marginTop: '8px', fontSize: '0.9em' }}>
+                  Zoeken...
+                </div>
+              </div>
+            ) : filteredKlanten.length > 0 ? (
               filteredKlanten.map((klant, index) => (
                 <div
                   key={index}

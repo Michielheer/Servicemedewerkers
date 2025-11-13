@@ -516,6 +516,7 @@ function App() {
   const [selectedKlant, setSelectedKlant] = useState(null);
   const [klantSearchTerm, setKlantSearchTerm] = useState('');
   const [showKlantDropdown, setShowKlantDropdown] = useState(false);
+  const [klantenLoading, setKlantenLoading] = useState(false);
 
   // Concurrenten state
   const [mattenConcurrenten, setMattenConcurrenten] = useState({
@@ -1258,6 +1259,10 @@ function App() {
       return;
     }
 
+    // Toon loading state tijdens typen
+    setKlantenLoading(true);
+    setKlanten([]);
+
     // Debounce: wacht 400ms na laatste toetsaanslag
     const timeoutId = setTimeout(async () => {
       if (config.mode === 'api') {
@@ -1276,10 +1281,13 @@ function App() {
         } catch (error) {
           console.error('Fout bij zoeken klanten:', error);
           setKlanten([]);
+        } finally {
+          setKlantenLoading(false);
         }
       } else {
         // CSV mode: gebruik hardcoded data
         setKlanten(HARDCODED_CRM_KLANTEN);
+        setKlantenLoading(false);
       }
     }, 400);
 
@@ -1874,6 +1882,7 @@ function App() {
             showKlantDropdown={showKlantDropdown}
             setShowKlantDropdown={setShowKlantDropdown}
             filteredKlanten={filteredKlanten}
+            klantenLoading={klantenLoading}
             handleKlantSelect={handleKlantSelect}
           />
         )}
