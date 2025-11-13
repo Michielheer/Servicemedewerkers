@@ -1286,10 +1286,8 @@ function App() {
     return () => clearTimeout(timeoutId);
   }, [isAuthenticated, klantSearchTerm]);
 
-  const filteredKlanten = klanten.filter(klant => 
-    klant.klantnaam.toLowerCase().includes(klantSearchTerm.toLowerCase()) ||
-    klant.relatienummer.toLowerCase().includes(klantSearchTerm.toLowerCase())
-  );
+  // Geen extra filtering nodig - API doet dit al
+  const filteredKlanten = klanten;
 
   const saveInspectie = async () => {
     try {
