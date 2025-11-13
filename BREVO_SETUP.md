@@ -31,9 +31,11 @@ De applicatie verstuurt geautomatiseerde inspectierapporten naar het routecontac
 4. Je ziet daar je SMTP credentials:
    - **Server**: `smtp-relay.brevo.com`
    - **Port**: `587`
-   - **Login**: `xxxxxxxx@smtp-brevo.com`
-   - **Password**: `xxxxxxxxxxxx`
+   - **Login**: `[jouw-login]@smtp-brevo.com`
+   - **Password**: `[jouw-wachtwoord]`
 5. **Kopieer deze gegevens** (je hebt ze nodig voor Azure configuratie).
+
+**BELANGRIJK:** Bewaar deze credentials veilig en voeg ze ALLEEN toe aan Azure Configuration, NIET in code of documentatie!
 
 ---
 

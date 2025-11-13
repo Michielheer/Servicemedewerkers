@@ -41,16 +41,20 @@ Klik **OK**
 #### Variabele 3:
 ```
 Name:  SMTP_USER
-Value: 9b8f93001@smtp-brevo.com
+Value: [jouw-brevo-login]@smtp-brevo.com
 ```
 Klik **OK**
+
+**BELANGRIJK:** Gebruik je EIGEN Brevo SMTP login (zie Brevo dashboard → SMTP & API)
 
 #### Variabele 4:
 ```
 Name:  SMTP_PASS
-Value: 4COf0V35LNvwBX7a
+Value: [jouw-brevo-wachtwoord]
 ```
 Klik **OK**
+
+**BELANGRIJK:** Gebruik je EIGEN Brevo SMTP wachtwoord (zie Brevo dashboard → SMTP & API)
 
 #### Variabele 5:
 ```

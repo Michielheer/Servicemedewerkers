@@ -34,3 +34,13 @@ yarn-error.log*
 .azure/
 local.settings.json
 
+# Test scripts met credentials
+test-email.js
+test-*.js
+
+# Credentials en secrets
+*.env
+.env
+credentials.txt
+secrets.txt
+
