@@ -498,6 +498,7 @@ function App() {
   const [messageType, setMessageType] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [emailDialog, setEmailDialog] = useState({ visible: false, type: null, data: {} });
   const dataConfigRef = useRef(getDataConfig());
 
   // Form state
@@ -2063,60 +2064,18 @@ function App() {
                     const testEmail = process.env.REACT_APP_EMAIL_TEST_RECIPIENT || 'michiel@datametrics.nl';
                     const finalRecipient = testMode ? testEmail : recipientEmail;
                     
-                    const confirmed = window.confirm(
-                      `Wil je het inspectie rapport per email versturen?\n\n` +
-                      `Naar: ${finalRecipient}\n` +
-                      `Van: ${formData.klantnaam}\n` +
-                      `Inspecteur: ${formData.inspecteur}\n\n` +
-                      (testMode ? `⚠️ TEST MODE: Email gaat naar ${testEmail}\n\n` : '') +
-                      `Doorgaan?`
-                    );
-                    
-                    if (!confirmed) {
-                      return; // Gebruiker heeft geannuleerd
-                    }
-                    
-                    setLoading(true);
-                    try {
-                      const response = await fetch(`${config.endpoints.apiBaseUrl}/send-inspectie-email`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ inspectieID: completionOverlay.inspectieID })
-                      });
-                      
-                      const result = await response.json();
-                      
-                      if (response.ok && result.success) {
-                        alert(
-                          `✅ EMAIL VERZONDEN!\n\n` +
-                          `Naar: ${result.recipient}\n` +
-                          `Status: Succesvol verzonden\n` +
-                          `Message ID: ${result.messageId || 'N/A'}\n\n` +
-                          `De klant ontvangt het inspectie rapport binnen enkele minuten.`
-                        );
-                      } else if (result.preview) {
-                        alert(
-                          `⚠️ EMAIL NIET VERZONDEN\n\n` +
-                          `Reden: SMTP niet geconfigureerd in Azure\n\n` +
-                          `Configureer SMTP credentials in Azure Configuration om emails te versturen.`
-                        );
-                      } else {
-                        alert(
-                          `❌ EMAIL FOUT\n\n` +
-                          `Fout: ${result.error || 'Onbekende fout'}\n\n` +
-                          `Controleer de Azure Function logs voor meer details.`
-                        );
+                    setEmailDialog({
+                      visible: true,
+                      type: 'confirm',
+                      data: {
+                        recipient: finalRecipient,
+                        klantnaam: formData.klantnaam,
+                        inspecteur: formData.inspecteur,
+                        testMode,
+                        testEmail,
+                        inspectieID: completionOverlay.inspectieID
                       }
-                    } catch (error) {
-                      console.error('Email versturen fout:', error);
-                      alert(
-                        `❌ EMAIL FOUT\n\n` +
-                        `Fout: ${error.message}\n\n` +
-                        `Controleer je internetverbinding en probeer opnieuw.`
-                      );
-                    } finally {
-                      setLoading(false);
-                    }
+                    });
                   }}
                   style={{ minWidth: '180px', fontSize: '1.05em' }}
                   disabled={loading}
@@ -2247,6 +2206,215 @@ function App() {
                 onClick={sluitCompletionOverlay}
               >
                 Terug naar app
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Email Dialogen */}
+      {emailDialog.visible && emailDialog.type === 'confirm' && (
+        <div className="email-dialog-overlay" onClick={() => setEmailDialog({ visible: false, type: null, data: {} })}>
+          <div className="email-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="email-dialog-header">
+              <div className="email-dialog-icon">📧</div>
+              <h2 className="email-dialog-title">Email Versturen</h2>
+            </div>
+            
+            <div className="email-dialog-content">
+              <p className="email-dialog-message">
+                Wil je het inspectie rapport per email versturen?
+              </p>
+              
+              <div className="email-dialog-info">
+                <div className="email-dialog-info-row">
+                  <span className="email-dialog-label">Naar:</span>
+                  <span className="email-dialog-value">{emailDialog.data.recipient}</span>
+                </div>
+                <div className="email-dialog-info-row">
+                  <span className="email-dialog-label">Klant:</span>
+                  <span className="email-dialog-value">{emailDialog.data.klantnaam}</span>
+                </div>
+                <div className="email-dialog-info-row">
+                  <span className="email-dialog-label">Inspecteur:</span>
+                  <span className="email-dialog-value">{emailDialog.data.inspecteur}</span>
+                </div>
+              </div>
+              
+              {emailDialog.data.testMode && (
+                <div className="email-dialog-warning">
+                  ⚠️ TEST MODE: Email wordt verzonden naar {emailDialog.data.testEmail}
+                </div>
+              )}
+            </div>
+            
+            <div className="email-dialog-actions">
+              <button 
+                className="email-dialog-btn email-dialog-btn-secondary"
+                onClick={() => setEmailDialog({ visible: false, type: null, data: {} })}
+              >
+                Annuleren
+              </button>
+              <button 
+                className="email-dialog-btn email-dialog-btn-success"
+                onClick={async () => {
+                  setLoading(true);
+                  try {
+                    const config = getDataConfig();
+                    const response = await fetch(`${config.endpoints.apiBaseUrl}/send-inspectie-email`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ inspectieID: emailDialog.data.inspectieID })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (response.ok && result.success) {
+                      setEmailDialog({
+                        visible: true,
+                        type: 'success',
+                        data: {
+                          recipient: result.recipient,
+                          messageId: result.messageId
+                        }
+                      });
+                    } else if (result.preview) {
+                      setEmailDialog({
+                        visible: true,
+                        type: 'warning',
+                        data: {}
+                      });
+                    } else {
+                      setEmailDialog({
+                        visible: true,
+                        type: 'error',
+                        data: {
+                          error: result.error || 'Onbekende fout'
+                        }
+                      });
+                    }
+                  } catch (error) {
+                    console.error('Email versturen fout:', error);
+                    setEmailDialog({
+                      visible: true,
+                      type: 'error',
+                      data: {
+                        error: error.message
+                      }
+                    });
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading}
+              >
+                {loading ? 'Versturen...' : 'Versturen'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {emailDialog.visible && emailDialog.type === 'success' && (
+        <div className="email-dialog-overlay" onClick={() => setEmailDialog({ visible: false, type: null, data: {} })}>
+          <div className="email-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="email-dialog-header">
+              <div className="email-dialog-icon">✅</div>
+              <h2 className="email-dialog-title">Email Verzonden!</h2>
+            </div>
+            
+            <div className="email-dialog-content">
+              <div className="email-dialog-success">
+                <div className="email-dialog-success-title">Email succesvol verzonden</div>
+                <p className="email-dialog-message">
+                  De klant ontvangt het inspectie rapport binnen enkele minuten.
+                </p>
+              </div>
+              
+              <div className="email-dialog-info">
+                <div className="email-dialog-info-row">
+                  <span className="email-dialog-label">Ontvanger:</span>
+                  <span className="email-dialog-value">{emailDialog.data.recipient}</span>
+                </div>
+                {emailDialog.data.messageId && (
+                  <div className="email-dialog-info-row">
+                    <span className="email-dialog-label">Message ID:</span>
+                    <span className="email-dialog-value" style={{ fontSize: '12px' }}>
+                      {emailDialog.data.messageId}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="email-dialog-actions">
+              <button 
+                className="email-dialog-btn email-dialog-btn-primary"
+                onClick={() => setEmailDialog({ visible: false, type: null, data: {} })}
+              >
+                Sluiten
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {emailDialog.visible && emailDialog.type === 'warning' && (
+        <div className="email-dialog-overlay" onClick={() => setEmailDialog({ visible: false, type: null, data: {} })}>
+          <div className="email-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="email-dialog-header">
+              <div className="email-dialog-icon">⚠️</div>
+              <h2 className="email-dialog-title">Email Niet Verzonden</h2>
+            </div>
+            
+            <div className="email-dialog-content">
+              <div className="email-dialog-warning">
+                <p className="email-dialog-message">
+                  <strong>SMTP niet geconfigureerd in Azure</strong><br/><br/>
+                  Configureer de SMTP credentials in Azure Configuration om emails te versturen.
+                </p>
+              </div>
+            </div>
+            
+            <div className="email-dialog-actions">
+              <button 
+                className="email-dialog-btn email-dialog-btn-primary"
+                onClick={() => setEmailDialog({ visible: false, type: null, data: {} })}
+              >
+                Sluiten
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {emailDialog.visible && emailDialog.type === 'error' && (
+        <div className="email-dialog-overlay" onClick={() => setEmailDialog({ visible: false, type: null, data: {} })}>
+          <div className="email-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="email-dialog-header">
+              <div className="email-dialog-icon">❌</div>
+              <h2 className="email-dialog-title">Email Fout</h2>
+            </div>
+            
+            <div className="email-dialog-content">
+              <div className="email-dialog-error">
+                <div className="email-dialog-error-title">Email kon niet worden verzonden</div>
+                <p className="email-dialog-message">
+                  {emailDialog.data.error}
+                </p>
+              </div>
+              
+              <p className="email-dialog-message" style={{ marginTop: '15px', fontSize: '14px' }}>
+                Controleer de Azure Function logs voor meer details of probeer het opnieuw.
+              </p>
+            </div>
+            
+            <div className="email-dialog-actions">
+              <button 
+                className="email-dialog-btn email-dialog-btn-primary"
+                onClick={() => setEmailDialog({ visible: false, type: null, data: {} })}
+              >
+                Sluiten
               </button>
             </div>
           </div>
