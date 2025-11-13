@@ -351,6 +351,15 @@ module.exports = async function (context, req) {
       return;
     }
 
+    // TEST MODE: Override recipient voor testdoeleinden
+    const TEST_MODE = process.env.EMAIL_TEST_MODE === 'true';
+    const TEST_EMAIL = process.env.EMAIL_TEST_RECIPIENT || 'michiel@datametrics.nl';
+    
+    if (TEST_MODE) {
+      console.log(`🧪 TEST MODE: Email wordt verzonden naar ${TEST_EMAIL} in plaats van ${recipientEmail}`);
+      recipientEmail = TEST_EMAIL;
+    }
+
     // Haal aantallen en problemen op
     const countsResult = await pool.request()
       .input('id', sql.Int, inspectieID)
