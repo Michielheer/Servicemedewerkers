@@ -19,15 +19,17 @@ const getConfig = () => {
     password,
     options: {
       encrypt: true,
-      trustServerCertificate: false
+      trustServerCertificate: false,
+      enableArithAbort: true
     },
     pool: {
-      max: 10,
-      min: 0,
-      idleTimeoutMillis: 30000
+      max: 20,
+      min: 2,
+      idleTimeoutMillis: 30000,
+      acquireTimeoutMillis: 15000
     },
     connectionTimeout: 30000,
-    requestTimeout: 30000
+    requestTimeout: 60000
   };
 };
 
