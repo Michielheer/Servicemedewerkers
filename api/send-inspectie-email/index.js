@@ -1,49 +1,46 @@
 const { getPool, sql } = require('../shared/db');
+const nodemailer = require('nodemailer');
 
-// Email service (Brevo/SendinBlue of fallback naar console.log voor development)
+// Email service via Brevo SMTP
 const sendEmail = async (to, subject, htmlContent) => {
-  const BREVO_API_KEY = process.env.BREVO_API_KEY;
+  const SMTP_HOST = process.env.SMTP_HOST || 'smtp-relay.brevo.com';
+  const SMTP_PORT = process.env.SMTP_PORT || 587;
+  const SMTP_USER = process.env.SMTP_USER;
+  const SMTP_PASS = process.env.SMTP_PASS;
   const FROM_EMAIL = process.env.FROM_EMAIL || 'inspectie@lavans.nl';
   const FROM_NAME = process.env.FROM_NAME || 'Lavans Service';
   
-  if (!BREVO_API_KEY) {
-    console.warn('⚠️ BREVO_API_KEY niet ingesteld. Email wordt NIET verzonden.');
+  if (!SMTP_USER || !SMTP_PASS) {
+    console.warn('⚠️ SMTP credentials niet ingesteld. Email wordt NIET verzonden.');
     console.log('📧 Email preview:', { to, subject, htmlContent: htmlContent.substring(0, 200) });
-    return { success: false, message: 'Brevo niet geconfigureerd', preview: true };
+    return { success: false, message: 'SMTP niet geconfigureerd', preview: true };
   }
 
   try {
-    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method: 'POST',
-      headers: {
-        'api-key': BREVO_API_KEY,
-        'Content-Type': 'application/json',
-        'accept': 'application/json'
-      },
-      body: JSON.stringify({
-        sender: {
-          name: FROM_NAME,
-          email: FROM_EMAIL
-        },
-        to: [{
-          email: to,
-          name: to.split('@')[0] // Gebruik email username als naam
-        }],
-        subject: subject,
-        htmlContent: htmlContent
-      })
+    // Maak SMTP transporter aan
+    const transporter = nodemailer.createTransport({
+      host: SMTP_HOST,
+      port: SMTP_PORT,
+      secure: false, // true voor 465, false voor andere poorten
+      auth: {
+        user: SMTP_USER,
+        pass: SMTP_PASS
+      }
     });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-      throw new Error(`Brevo fout: ${response.status} - ${error.message || JSON.stringify(error)}`);
-    }
+    // Verstuur email
+    const info = await transporter.sendMail({
+      from: `"${FROM_NAME}" <${FROM_EMAIL}>`,
+      to: to,
+      subject: subject,
+      html: htmlContent
+    });
 
-    const result = await response.json();
+    console.log('Email verzonden:', info.messageId);
     return { 
       success: true, 
       message: 'Email verzonden',
-      messageId: result.messageId 
+      messageId: info.messageId 
     };
   } catch (error) {
     console.error('Email versturen mislukt:', error);

@@ -23,15 +23,17 @@ De applicatie verstuurt geautomatiseerde inspectierapporten naar het routecontac
 
 ---
 
-### Stap 2: Brevo API Key Genereren
+### Stap 2: Brevo SMTP Credentials Ophalen
 
 1. Log in op je Brevo account.
 2. Klik rechtsboven op je **naam** → **SMTP & API**.
-3. Scroll naar beneden naar **API Keys**.
-4. Klik op **"Create a new API key"**.
-5. Geef de API Key een naam (bijv. `Lavans Inspectie App`).
-6. **Kopieer de gegenereerde API Key direct!** Deze wordt slechts één keer getoond.
-   - Formaat: `xkeysib-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-xxxxxx`
+3. Scroll naar **SMTP Settings**.
+4. Je ziet daar je SMTP credentials:
+   - **Server**: `smtp-relay.brevo.com`
+   - **Port**: `587`
+   - **Login**: `xxxxxxxx@smtp-brevo.com`
+   - **Password**: `xxxxxxxxxxxx`
+5. **Kopieer deze gegevens** (je hebt ze nodig voor Azure configuratie).
 
 ---
 
@@ -55,7 +57,7 @@ Brevo vereist dat je het afzender emailadres verifieert.
 
 ### Stap 4: Azure Static Web App Configuratie
 
-De Brevo API Key en afzender instellingen moeten als omgevingsvariabelen worden ingesteld in Azure.
+De Brevo SMTP credentials en afzender instellingen moeten als omgevingsvariabelen worden ingesteld in Azure.
 
 1. Ga naar de **Azure Portal**.
 2. Navigeer naar je **Static Web App** resource.
@@ -64,12 +66,17 @@ De Brevo API Key en afzender instellingen moeten als omgevingsvariabelen worden 
 
 | **Naam** | **Waarde** | **Beschrijving** |
 |----------|------------|------------------|
-| `BREVO_API_KEY` | `xkeysib-xxxx...` | Je Brevo API Key |
+| `SMTP_HOST` | `smtp-relay.brevo.com` | Brevo SMTP server |
+| `SMTP_PORT` | `587` | SMTP poort |
+| `SMTP_USER` | `9b8f93001@smtp-brevo.com` | Je Brevo SMTP login |
+| `SMTP_PASS` | `4COf0V35LNvwBX7a` | Je Brevo SMTP password |
 | `FROM_EMAIL` | `inspectie@lavans.nl` | Afzender emailadres |
 | `FROM_NAME` | `Lavans Service` | Afzender naam |
 
 5. Klik op **Save**.
 6. De Static Web App zal automatisch herstarten (duurt ~30 seconden).
+
+**Belangrijk**: Gebruik de exacte credentials die je hebt ontvangen van Brevo!
 
 ---
 
@@ -84,11 +91,11 @@ De Brevo API Key en afzender instellingen moeten als omgevingsvariabelen worden 
    - ✅ Je ziet een succesmelding
    - 📧 De klant ontvangt de email binnen 1 minuut
 
-### Zonder Brevo API Key:
+### Zonder SMTP Credentials:
 
-- Als `BREVO_API_KEY` **niet** is ingesteld, zie je:
+- Als `SMTP_USER` of `SMTP_PASS` **niet** is ingesteld, zie je:
   ```
-  ⚠️ Email preview gegenereerd (Brevo niet geconfigureerd)
+  ⚠️ Email preview gegenereerd (SMTP niet geconfigureerd)
   ```
 - De email wordt **gelogd** in de Azure Function logs, maar **niet verzonden**.
 
@@ -99,7 +106,7 @@ De Brevo API Key en afzender instellingen moeten als omgevingsvariabelen worden 
 ### 1. **Email komt niet aan**
 
 **Check:**
-- ✅ Is `BREVO_API_KEY` correct ingesteld in Azure Configuration?
+- ✅ Zijn `SMTP_USER` en `SMTP_PASS` correct ingesteld in Azure Configuration?
 - ✅ Is `FROM_EMAIL` geverifieerd in Brevo (Senders & IP)?
 - ✅ Check de **Brevo Logs**:
   - Log in op Brevo → **Campaigns** → **Transactional** → **Email Logs**
@@ -108,15 +115,16 @@ De Brevo API Key en afzender instellingen moeten als omgevingsvariabelen worden 
 - ✅ Check de **Azure Function logs**:
   - Azure Portal → Static Web App → Functions → `send-inspectie-email` → Monitor
 
-### 2. **Foutmelding: "Brevo fout: 401"**
+### 2. **Foutmelding: "Authentication failed"**
 
-**Oorzaak**: Ongeldige of verlopen API Key.
+**Oorzaak**: Ongeldige SMTP credentials.
 
 **Oplossing**:
-- Genereer een nieuwe API Key in Brevo.
-- Update `BREVO_API_KEY` in Azure Configuration.
+- Controleer of `SMTP_USER` en `SMTP_PASS` exact overeenkomen met Brevo.
+- Ga naar Brevo → SMTP & API → SMTP Settings om credentials te verifiëren.
+- Update de waarden in Azure Configuration.
 
-### 3. **Foutmelding: "Brevo fout: 400 - Invalid sender"**
+### 3. **Foutmelding: "Invalid sender"**
 
 **Oorzaak**: Het `FROM_EMAIL` adres is niet geverifieerd in Brevo.
 
