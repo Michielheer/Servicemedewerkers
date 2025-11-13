@@ -83,7 +83,8 @@ module.exports = async function (context, req) {
           schoon_onbeschadigd: true,
           vuilgraad_label: null,
           barcode: null,
-          opmerkingen: `Contract ${row.Contractregelnummer || ''} | Abonnement ${row.Abonnementsregelnummer || ''}`
+          opmerkingen: '', // Lege opmerkingen - metadata zit in metadata veld
+          metadata: `Contract ${row.Contractregelnummer || ''} | Abonnement ${row.Abonnementsregelnummer || ''}`
         });
         return;
       }
@@ -101,7 +102,8 @@ module.exports = async function (context, req) {
           vuilgraad_label: null,
           barcode: null,
           representativiteitsscore: null,
-          opmerkingen: `Contract ${row.Contractregelnummer || ''} | Abonnement ${row.Abonnementsregelnummer || ''}`
+          opmerkingen: '', // Lege opmerkingen - metadata zit in metadata veld
+          metadata: `Contract ${row.Contractregelnummer || ''} | Abonnement ${row.Abonnementsregelnummer || ''}`
         });
         return;
       }
@@ -118,7 +120,8 @@ module.exports = async function (context, req) {
             artikel: omschrijving,
             vervangen: false,
             aantal: Number.isFinite(aantal) ? aantal : null,
-            opmerkingen: `Contract ${row.Contractregelnummer || ''} | Abonnement ${row.Abonnementsregelnummer || ''}`
+            opmerkingen: '', // Lege opmerkingen - metadata zit in metadata veld
+            metadata: `Contract ${row.Contractregelnummer || ''} | Abonnement ${row.Abonnementsregelnummer || ''}`
           });
           return;
         }
@@ -129,7 +132,8 @@ module.exports = async function (context, req) {
           aantal_geteld: Number.isFinite(aantal) ? aantal : null,
           waarvan_gebruikt: 0,
           vuil_percentage: null,
-          opmerkingen: `Contract ${row.Contractregelnummer || ''} | Abonnement ${row.Abonnementsregelnummer || ''}`
+          opmerkingen: '', // Lege opmerkingen - metadata zit in metadata veld
+          metadata: `Contract ${row.Contractregelnummer || ''} | Abonnement ${row.Abonnementsregelnummer || ''}`
         });
       }
     });
