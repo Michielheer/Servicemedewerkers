@@ -10,8 +10,12 @@ module.exports = async function (context, req) {
     request.input('rel', sql.NVarChar(50), relatienummer || null);
     request.input('search', sql.NVarChar(200), search ? `%${search}%` : null);
 
+    // Als er gezocht wordt of een specifiek relatienummer wordt gevraagd, geen limiet
+    const hasFilter = relatienummer || search;
+    const topClause = hasFilter ? '' : 'TOP 5000';
+    
     const result = await request.query(`
-      SELECT TOP 5000
+      SELECT ${topClause}
         relatienummer = UPPER(REPLACE(REPLACE(ISNULL(d.Relatienummer, ''), ' ', ''), '[', '')),
         klantnaam = ISNULL(MAX(d.Naam), ''),
         adres = ISNULL(MAX(d.Adres), ''),
