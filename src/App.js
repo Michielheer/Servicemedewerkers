@@ -1776,30 +1776,84 @@ function App() {
     setContactpersonen(newData);
   };
 
-  const saveContactWijzigingen = () => {
-    const nieuweTodos = [];
+  const saveContactWijzigingen = async () => {
+    setLoading(true);
     
-    contactpersonen.forEach(contact => {
-      const naam = formatNaam(contact.voornaam, contact.tussenvoegsel, contact.achternaam);
+    try {
+      const nieuweTodos = [];
+      const wijzigingen = [];
       
-      // Check voor nieuwe contactpersonen
-      if (contact.nog_in_dienst && !contact.email) {
-        nieuweTodos.push(`Nieuwe contactpersoon toevoegen: ${naam}`);
+      contactpersonen.forEach(contact => {
+        const naam = formatNaam(contact.voornaam, contact.tussenvoegsel, contact.achternaam);
+        
+        // Check voor nieuwe contactpersonen
+        if (contact.nog_in_dienst && !contact.email) {
+          nieuweTodos.push(`Nieuwe contactpersoon toevoegen: ${naam}`);
+          wijzigingen.push({
+            type: 'toevoegen',
+            ...contact,
+            omschrijving: `Nieuwe contactpersoon: ${naam} (email nog toevoegen)`
+          });
+        }
+        
+        // Check voor klantportaal uitnodiging
+        if (contact.nog_in_dienst && !contact.klantenportaal && contact.email) {
+          nieuweTodos.push(`Uitnodigen klantportaal voor ${contact.email}`);
+          wijzigingen.push({
+            type: 'wijzigen',
+            ...contact,
+            omschrijving: `Klantportaal uitnodigen voor ${contact.email}`
+          });
+        }
+        
+        // Check voor niet meer in dienst
+        if (!contact.nog_in_dienst) {
+          nieuweTodos.push(`Contactpersoon ${naam} (${contact.email}) is niet meer in dienst. Controleer en update CRM.`);
+          wijzigingen.push({
+            type: 'verwijderen',
+            ...contact,
+            omschrijving: `Contactpersoon ${naam} niet meer in dienst - verwijderen uit CRM`
+          });
+        }
+      });
+      
+      // Stuur wijzigingen naar API als er wijzigingen zijn
+      if (wijzigingen.length > 0) {
+        const config = getDataConfig();
+        const response = await fetch(`${config.endpoints.apiBaseUrl}/contactpersonen-wijzigingen`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            relatienummer: formData.relatienummer,
+            klantnaam: formData.klantnaam,
+            inspecteur: formData.inspecteur,
+            wijzigingen
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Opslaan wijzigingen mislukt');
+        }
+
+        const result = await response.json();
+        console.log('Contactpersoon wijzigingen opgeslagen:', result);
       }
       
-      // Check voor klantportaal uitnodiging
-      if (contact.nog_in_dienst && !contact.klantenportaal) {
-        nieuweTodos.push(`Uitnodigen klantportaal voor ${contact.email}`);
-      }
+      setKlantenserviceTodoList(nieuweTodos.map(text => ({ text, done: false })));
+      showMessage(wijzigingen.length > 0 
+        ? `✅ ${wijzigingen.length} wijziging(en) opgeslagen in database!`
+        : 'Geen wijzigingen gevonden.', 
+        wijzigingen.length > 0 ? 'success' : 'info'
+      );
       
-      // Check voor niet meer in dienst
-      if (!contact.nog_in_dienst) {
-        nieuweTodos.push(`Contactpersoon ${naam} (${contact.email}) is niet meer in dienst. Controleer en update CRM.`);
-      }
-    });
-    
-    setKlantenserviceTodoList(nieuweTodos.map(text => ({ text, done: false })));
-    showMessage('Wijzigingen gelogd en to-do\'s voor klantenservice toegevoegd!', 'success');
+    } catch (error) {
+      console.error('Fout bij opslaan contactpersoon wijzigingen:', error);
+      showMessage(`❌ Fout bij opslaan: ${error.message}`, 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const completionSummary = completionOverlay.summary
