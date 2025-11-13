@@ -560,6 +560,7 @@ function App() {
   const catalogLoadingRef = useRef(false);
   const materiaalLoadingRef = useRef(false);
   const messageTimerRef = useRef(null);
+  const lastLoadedKlantRef = useRef(null); // Track laatst geladen klant
   const [completionOverlay, setCompletionOverlay] = useState({
     visible: false,
     logged: false,
@@ -928,6 +929,16 @@ function App() {
       const normalizedRelNr = normalizeRelatienummer(relatienummer || '');
       const naamVoorKey = klantnaam || '';
       const config = dataConfigRef.current;
+      
+      // Voorkom dubbel laden van dezelfde klant
+      const klantKey = `${normalizedRelNr}-${naamVoorKey}`;
+      if (lastLoadedKlantRef.current === klantKey) {
+        console.log('[Hydrate] Skip - klant al geladen:', klantKey);
+        return;
+      }
+      
+      console.log('[Hydrate] Laden klant:', klantKey);
+      lastLoadedKlantRef.current = klantKey;
 
       if (contactCatalog.loaded) {
         const contactsFromCatalog = resolveContactsFromCatalog(
@@ -1211,6 +1222,9 @@ function App() {
 
   // Klant selectie functies
   const handleKlantSelect = (klant) => {
+    // Reset de lastLoaded ref zodat nieuwe klant WEL wordt geladen
+    lastLoadedKlantRef.current = null;
+    
     const fallbackContacts = klant.contactpersonen || [];
     const contactsPreview = contactCatalog.loaded
       ? resolveContactsFromCatalog(contactCatalog, klant.relatienummer, klant.klantnaam, fallbackContacts)
