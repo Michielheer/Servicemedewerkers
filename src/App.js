@@ -2043,9 +2043,41 @@ function App() {
                 <button 
                   className="btn btn-success" 
                   onClick={async () => {
+                    // Haal eerst het email adres op
+                    const config = getDataConfig();
+                    let recipientEmail = 'de klant';
+                    
+                    try {
+                      // Fetch inspectie data om email te tonen
+                      const inspectieResponse = await fetch(`${config.endpoints.apiBaseUrl}/inspecties/${completionOverlay.inspectieID}`);
+                      if (inspectieResponse.ok) {
+                        const inspectieData = await inspectieResponse.json();
+                        recipientEmail = inspectieData.ContactEmail || inspectieData.routeContactEmail || 'de klant';
+                      }
+                    } catch (e) {
+                      console.log('Kon email adres niet ophalen voor preview');
+                    }
+                    
+                    // Toon bevestigingsdialoog
+                    const testMode = process.env.REACT_APP_EMAIL_TEST_MODE === 'true';
+                    const testEmail = process.env.REACT_APP_EMAIL_TEST_RECIPIENT || 'michiel@datametrics.nl';
+                    const finalRecipient = testMode ? testEmail : recipientEmail;
+                    
+                    const confirmed = window.confirm(
+                      `Wil je het inspectie rapport per email versturen?\n\n` +
+                      `Naar: ${finalRecipient}\n` +
+                      `Van: ${formData.klantnaam}\n` +
+                      `Inspecteur: ${formData.inspecteur}\n\n` +
+                      (testMode ? `⚠️ TEST MODE: Email gaat naar ${testEmail}\n\n` : '') +
+                      `Doorgaan?`
+                    );
+                    
+                    if (!confirmed) {
+                      return; // Gebruiker heeft geannuleerd
+                    }
+                    
                     setLoading(true);
                     try {
-                      const config = getDataConfig();
                       const response = await fetch(`${config.endpoints.apiBaseUrl}/send-inspectie-email`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -2055,15 +2087,33 @@ function App() {
                       const result = await response.json();
                       
                       if (response.ok && result.success) {
-                        showMessage(`Email succesvol verzonden naar ${result.recipient || 'klant'}!`, 'success');
+                        alert(
+                          `✅ EMAIL VERZONDEN!\n\n` +
+                          `Naar: ${result.recipient}\n` +
+                          `Status: Succesvol verzonden\n` +
+                          `Message ID: ${result.messageId || 'N/A'}\n\n` +
+                          `De klant ontvangt het inspectie rapport binnen enkele minuten.`
+                        );
                       } else if (result.preview) {
-                        showMessage('Email preview gegenereerd (SMTP niet geconfigureerd)', 'warning');
+                        alert(
+                          `⚠️ EMAIL NIET VERZONDEN\n\n` +
+                          `Reden: SMTP niet geconfigureerd in Azure\n\n` +
+                          `Configureer SMTP credentials in Azure Configuration om emails te versturen.`
+                        );
                       } else {
-                        showMessage(`Email kon niet worden verzonden: ${result.error || 'Onbekende fout'}`, 'error');
+                        alert(
+                          `❌ EMAIL FOUT\n\n` +
+                          `Fout: ${result.error || 'Onbekende fout'}\n\n` +
+                          `Controleer de Azure Function logs voor meer details.`
+                        );
                       }
                     } catch (error) {
                       console.error('Email versturen fout:', error);
-                      showMessage(`❌ Email kon niet worden verzonden: ${error.message}`, 'error');
+                      alert(
+                        `❌ EMAIL FOUT\n\n` +
+                        `Fout: ${error.message}\n\n` +
+                        `Controleer je internetverbinding en probeer opnieuw.`
+                      );
                     } finally {
                       setLoading(false);
                     }
