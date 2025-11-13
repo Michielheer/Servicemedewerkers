@@ -308,7 +308,6 @@ const InspectieTab = ({
             <table className="table">
               <thead>
                 <tr>
-                  <th>Productnummer</th>
                   <th>Productomschrijving</th>
                   <th>Afdeling</th>
                   <th>Ligplaats</th>
@@ -316,19 +315,17 @@ const InspectieTab = ({
                   <th>Aanwezig</th>
                   <th>Schoon/Onbeschadigd</th>
                   <th>Vuilgraad</th>
-                  <th>Opmerkingen</th>
                 </tr>
               </thead>
               <tbody>
                 {standaardMattenData.map((mat, index) => (
-                  <tr key={index}>
-                    <td>{mat.productnummer}</td>
+                  <tr key={`standaard-${mat.productnummer || index}`}>
                     <td>{mat.mat_type}</td>
                     <td>
                       <input
                         type="text"
                         className="form-control"
-                        value={mat.afdeling}
+                        value={mat.afdeling || ''}
                         onChange={(e) => updateStandaardMatData(index, 'afdeling', e.target.value)}
                       />
                     </td>
@@ -336,7 +333,7 @@ const InspectieTab = ({
                       <input
                         type="text"
                         className="form-control"
-                        value={mat.ligplaats}
+                        value={mat.ligplaats || ''}
                         onChange={(e) => updateStandaardMatData(index, 'ligplaats', e.target.value)}
                       />
                     </td>
@@ -345,7 +342,7 @@ const InspectieTab = ({
                         type="number"
                         className="form-control"
                         min="0"
-                        value={mat.aantal}
+                        value={mat.aantal || 0}
                         onChange={(e) => updateStandaardMatData(index, 'aantal', parseInt(e.target.value) || 0)}
                       />
                     </td>
@@ -372,7 +369,7 @@ const InspectieTab = ({
                     <td>
                       <select
                         className="form-control vuilgraad-dropdown"
-                        value={mat.vuilgraad_label}
+                        value={mat.vuilgraad_label || ''}
                         onChange={(e) => updateStandaardMatData(index, 'vuilgraad_label', e.target.value)}
                       >
                         <option value="">Selecteer</option>
@@ -380,14 +377,6 @@ const InspectieTab = ({
                         <option value="Licht vervuild">Licht vervuild</option>
                         <option value="Sterk vervuild">Sterk vervuild</option>
                       </select>
-                    </td>
-                    <td>
-                      <input
-                        type="text"
-                        className="form-control"
-                        value={mat.opmerkingen || ''}
-                        onChange={(e) => updateStandaardMatData(index, 'opmerkingen', e.target.value)}
-                      />
                     </td>
                   </tr>
                 ))}
@@ -405,7 +394,6 @@ const InspectieTab = ({
         <table className="table">
           <thead>
             <tr>
-              <th>Productnummer</th>
               <th>Productomschrijving</th>
               <th>Afdeling</th>
               <th>Ligplaats</th>
@@ -415,19 +403,17 @@ const InspectieTab = ({
               <th>Vuilgraad</th>
               <th>Barcode</th>
               <th>Leeftijd</th>
-              <th>Opmerkingen</th>
             </tr>
           </thead>
           <tbody>
             {logomattenData.map((mat, index) => (
-              <tr key={index}>
-                <td>{mat.productnummer}</td>
+              <tr key={`logo-${mat.productnummer || index}`}>
                 <td>{mat.mat_type}</td>
                 <td>
                   <input
                     type="text"
                     className="form-control"
-                    value={mat.afdeling}
+                    value={mat.afdeling || ''}
                     onChange={(e) => updateLogomatData(index, 'afdeling', e.target.value)}
                   />
                 </td>
@@ -435,7 +421,7 @@ const InspectieTab = ({
                   <input
                     type="text"
                     className="form-control"
-                    value={mat.ligplaats}
+                    value={mat.ligplaats || ''}
                     onChange={(e) => updateLogomatData(index, 'ligplaats', e.target.value)}
                   />
                 </td>
@@ -444,7 +430,7 @@ const InspectieTab = ({
                     type="number"
                     className="form-control"
                     min="0"
-                    value={mat.aantal}
+                    value={mat.aantal || 0}
                     onChange={(e) => updateLogomatData(index, 'aantal', parseInt(e.target.value) || 0)}
                   />
                 </td>
@@ -471,7 +457,7 @@ const InspectieTab = ({
                 <td>
                   <select
                     className="form-control vuilgraad-dropdown"
-                    value={mat.vuilgraad_label}
+                    value={mat.vuilgraad_label || ''}
                     onChange={(e) => updateLogomatData(index, 'vuilgraad_label', e.target.value)}
                   >
                     <option value="">Selecteer</option>
@@ -490,14 +476,6 @@ const InspectieTab = ({
                   />
                 </td>
                 <td>{berekenLeeftijd(mat.barcode)}</td>
-                <td>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={mat.opmerkingen || ''}
-                    onChange={(e) => updateLogomatData(index, 'opmerkingen', e.target.value)}
-                  />
-                </td>
               </tr>
             ))}
           </tbody>
