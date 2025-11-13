@@ -1155,6 +1155,14 @@ function App() {
 
     const activeRelatienummer = (selectedKlant?.relatienummer || formData.relatienummer || '').trim();
     const activeKlantnaam = selectedKlant?.klantnaam || formData.klantnaam || '';
+    
+    // Check of deze klant al geladen is (voorkom dubbele call na handleKlantSelect)
+    const klantKey = `${normalizeRelatienummer(activeRelatienummer)}-${activeKlantnaam}`;
+    if (lastLoadedKlantRef.current === klantKey) {
+      console.log('[useEffect] Skip - klant al geladen via handleKlantSelect');
+      return;
+    }
+    
     const fallbackContacts = selectedKlant?.contactpersonen || [];
     const shouldUpdateContact = !selectedKlant;
 
