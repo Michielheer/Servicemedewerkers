@@ -540,6 +540,8 @@ function App() {
   const [todoList, setTodoList] = useState([]);
   const [klantenserviceTodoList, setKlantenserviceTodoList] = useState([]);
   const [contactpersonen, setContactpersonen] = useState([]);
+  const [klanten, setKlanten] = useState([]);
+  const [klantenLoaded, setKlantenLoaded] = useState(false);
   const [contactCatalog, setContactCatalog] = useState({
     loaded: false,
     byRelatienummer: {},
@@ -1245,7 +1247,39 @@ function App() {
     showMessage('Je bent uitgelogd.', 'info');
   };
 
-  const filteredKlanten = HARDCODED_CRM_KLANTEN.filter(klant => 
+  // Laad klanten bij mount
+  useEffect(() => {
+    const loadKlanten = async () => {
+      const config = getDataConfig();
+      if (config.mode === 'api' && !klantenLoaded) {
+        try {
+          const response = await fetch(config.endpoints.klantenApi, { cache: 'no-store' });
+          if (response.ok) {
+            const data = await response.json();
+            setKlanten(data);
+            setKlantenLoaded(true);
+          } else {
+            console.error('Klanten laden mislukt:', response.status);
+            setKlanten(HARDCODED_CRM_KLANTEN);
+            setKlantenLoaded(true);
+          }
+        } catch (error) {
+          console.error('Fout bij laden klanten:', error);
+          setKlanten(HARDCODED_CRM_KLANTEN);
+          setKlantenLoaded(true);
+        }
+      } else if (config.mode !== 'api') {
+        setKlanten(HARDCODED_CRM_KLANTEN);
+        setKlantenLoaded(true);
+      }
+    };
+    
+    if (isLoggedIn) {
+      loadKlanten();
+    }
+  }, [isLoggedIn, klantenLoaded]);
+
+  const filteredKlanten = (klanten.length > 0 ? klanten : HARDCODED_CRM_KLANTEN).filter(klant => 
     klant.klantnaam.toLowerCase().includes(klantSearchTerm.toLowerCase()) ||
     klant.relatienummer.toLowerCase().includes(klantSearchTerm.toLowerCase())
   );
