@@ -1275,10 +1275,10 @@ function App() {
       }
     };
     
-    if (isLoggedIn && !klantenLoaded) {
+    if (isAuthenticated && !klantenLoaded) {
       loadKlanten();
     }
-  }, [isLoggedIn]);
+  }, [isAuthenticated]);
 
   const filteredKlanten = (klanten.length > 0 ? klanten : HARDCODED_CRM_KLANTEN).filter(klant => 
     klant.klantnaam.toLowerCase().includes(klantSearchTerm.toLowerCase()) ||
