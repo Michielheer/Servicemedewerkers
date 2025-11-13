@@ -577,7 +577,7 @@ function App() {
     return `${v} ${t} ${a}`.replace(/\s+/g, ' ').trim();
   }, []);
 
-  const berekenLeeftijd = (barcode) => {
+  const berekenLeeftijd = useCallback((barcode) => {
     if (!barcode || barcode.toString().length < 7) {
       return '-';
     }
@@ -623,7 +623,7 @@ function App() {
     } catch (e) {
       return `Onbekend (fout: ${e})`;
     }
-  };
+  }, []);
 
   const toBool = (val) => {
     if (typeof val === 'boolean') return val;
