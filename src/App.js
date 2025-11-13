@@ -1248,11 +1248,12 @@ function App() {
   };
 
   // Laad klanten bij mount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
+    if (!isAuthenticated || klantenLoaded) return;
+
     const loadKlanten = async () => {
       const config = getDataConfig();
-      if (config.mode === 'api' && !klantenLoaded) {
+      if (config.mode === 'api') {
         try {
           const response = await fetch(config.endpoints.klantenApi, { cache: 'no-store' });
           if (response.ok) {
@@ -1269,16 +1270,14 @@ function App() {
           setKlanten(HARDCODED_CRM_KLANTEN);
           setKlantenLoaded(true);
         }
-      } else if (config.mode !== 'api') {
+      } else {
         setKlanten(HARDCODED_CRM_KLANTEN);
         setKlantenLoaded(true);
       }
     };
     
-    if (isAuthenticated && !klantenLoaded) {
-      loadKlanten();
-    }
-  }, [isAuthenticated]);
+    loadKlanten();
+  }, [isAuthenticated, klantenLoaded]);
 
   const filteredKlanten = (klanten.length > 0 ? klanten : HARDCODED_CRM_KLANTEN).filter(klant => 
     klant.klantnaam.toLowerCase().includes(klantSearchTerm.toLowerCase()) ||
