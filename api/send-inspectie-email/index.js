@@ -190,7 +190,7 @@ const generateEmailTemplate = (inspectieData) => {
 <body>
   <div class="email-container">
     <div class="header">
-      <h1>🔍 Service Inspectie Rapport</h1>
+      <h1>Service Inspectie Rapport</h1>
     </div>
     
     <p>Beste ${contactpersoon || 'relatie'},</p>
@@ -199,12 +199,12 @@ const generateEmailTemplate = (inspectieData) => {
     Hieronder vindt u een overzicht van onze bevindingen.</p>
     
     <div class="meta">
-      <p><strong>📅 Datum:</strong> ${formatDatum(datum)} om ${tijd || 'onbekend'}</p>
-      <p><strong>👤 Inspecteur:</strong> ${inspecteur}</p>
+      <p><strong>Datum:</strong> ${formatDatum(datum)} om ${tijd || 'onbekend'}</p>
+      <p><strong>Inspecteur:</strong> ${inspecteur}</p>
     </div>
 
     <div class="section">
-      <h2>📊 Geïnspecteerde Materialen</h2>
+      <h2>Geïnspecteerde Materialen</h2>
       <div class="stats">
         <div class="stat-box">
           <span class="stat-number">${standaardMatten || 0}</span>
@@ -227,7 +227,7 @@ const generateEmailTemplate = (inspectieData) => {
 
     ${problemen && problemen.length > 0 ? `
     <div class="section">
-      <h2>⚠️ Aandachtspunten</h2>
+      <h2>Aandachtspunten</h2>
       <div class="problem-list">
         <p><strong>Tijdens de inspectie zijn de volgende punten geconstateerd:</strong></p>
         <ul>
@@ -238,14 +238,14 @@ const generateEmailTemplate = (inspectieData) => {
     </div>
     ` : `
     <div class="success-message">
-      <p><strong>✅ Alles in orde!</strong></p>
+      <p><strong>Alles in orde!</strong></p>
       <p>Tijdens de inspectie zijn geen bijzonderheden geconstateerd. Alle materialen zijn in goede staat.</p>
     </div>
     `}
 
     ${algemeenOpmerkingen && Object.keys(algemeenOpmerkingen).length > 0 ? `
     <div class="section">
-      <h2>💬 Algemene Opmerkingen</h2>
+      <h2>Algemene Opmerkingen</h2>
       <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; border-left: 4px solid #007bff;">
         ${Object.entries(algemeenOpmerkingen)
           .filter(([key, value]) => value && value.trim())
