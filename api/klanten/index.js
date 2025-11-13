@@ -18,7 +18,16 @@ module.exports = async function (context, req) {
         SELECT TOP 1000
           rel_norm = UPPER(REPLACE(REPLACE(ISNULL(Relatienummer, ''), ' ', ''), '[', '')),
           naam = ISNULL(Naam, ''),
-          adres = ISNULL(Adres, '')
+          adres = ISNULL(Adres, ''),
+          -- Relevantie score: exacte match = 1, begint met = 2, bevat = 3
+          relevantie = CASE
+            WHEN @search IS NULL THEN 1
+            WHEN Naam = @search THEN 1
+            WHEN UPPER(REPLACE(REPLACE(Relatienummer, ' ', ''), '[', '')) = UPPER(@search) THEN 1
+            WHEN Naam LIKE REPLACE(@search, '%', '') + '%' THEN 2
+            WHEN UPPER(REPLACE(REPLACE(Relatienummer, ' ', ''), '[', '')) LIKE UPPER(REPLACE(@search, '%', '')) + '%' THEN 2
+            ELSE 3
+          END
         FROM dbo.DatamodelExcel1 WITH (NOLOCK)
         WHERE Relatienummer IS NOT NULL 
           AND Relatienummer <> ''
@@ -38,7 +47,7 @@ module.exports = async function (context, req) {
         actief = 1
       FROM normalized
       GROUP BY rel_norm
-      ORDER BY MAX(naam)
+      ORDER BY MIN(relevantie), MAX(naam)
       OPTION (MAXDOP 1);
     `);
 

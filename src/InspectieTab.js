@@ -58,55 +58,79 @@ const InspectieTab = ({
     
     {/* Klant selectie dropdown */}
     <div className="form-group">
-      <label>Selecteer Klant:</label>
+      <label style={{ fontWeight: 'bold', fontSize: '1.1em' }}>
+        🔍 Zoek Klant
+      </label>
       <div style={{ position: 'relative' }} ref={dropdownRef}>
         <input
           type="text"
           className="form-control"
-          placeholder="Type klantnaam of relatienummer..."
+          placeholder="Typ naam of nummer (min. 2 karakters)..."
           value={klantSearchTerm}
           onChange={(e) => {
             setKlantSearchTerm(e.target.value);
             setShowKlantDropdown(true);
           }}
           onFocus={() => setShowKlantDropdown(true)}
+          style={{
+            fontSize: '1.05em',
+            padding: '12px',
+            borderWidth: '2px',
+            borderColor: showKlantDropdown && klantSearchTerm.length >= 2 ? '#007bff' : '#ccc'
+          }}
         />
-        {showKlantDropdown && (
+        {klantSearchTerm.length > 0 && klantSearchTerm.length < 2 && (
+          <div style={{ fontSize: '0.85em', color: '#999', marginTop: '4px' }}>
+            Typ nog {2 - klantSearchTerm.length} karakter(s)...
+          </div>
+        )}
+        {showKlantDropdown && klantSearchTerm.length >= 2 && (
           <div style={{
             position: 'absolute',
             top: '100%',
             left: 0,
             right: 0,
             backgroundColor: 'white',
-            border: '1px solid #ccc',
+            border: '2px solid #007bff',
             borderTop: 'none',
-            maxHeight: '200px',
+            maxHeight: '300px',
             overflowY: 'auto',
             zIndex: 1000,
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+            boxShadow: '0 4px 8px rgba(0,0,0,0.15)',
+            borderRadius: '0 0 8px 8px'
           }}>
             {filteredKlanten.length > 0 ? (
               filteredKlanten.map((klant, index) => (
                 <div
                   key={index}
+                  className="klant-dropdown-item"
                   style={{
-                    padding: '10px',
+                    padding: '12px 15px',
                     cursor: 'pointer',
-                    borderBottom: '1px solid #eee'
+                    borderBottom: index < filteredKlanten.length - 1 ? '1px solid #eee' : 'none',
+                    transition: 'background-color 0.15s'
                   }}
                   onClick={() => handleKlantSelect(klant)}
-                  onMouseEnter={(e) => e.target.style.backgroundColor = '#f5f5f5'}
-                  onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f0f7ff';
+                    e.currentTarget.style.borderLeft = '3px solid #007bff';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'white';
+                    e.currentTarget.style.borderLeft = 'none';
+                  }}
                 >
-                  <div style={{ fontWeight: 'bold' }}>{klant.klantnaam}</div>
-                  <div style={{ fontSize: '0.9em', color: '#666' }}>
-                    {klant.relatienummer} • {klant.plaats}
+                  <div style={{ fontWeight: 'bold', color: '#333', fontSize: '1em' }}>
+                    {klant.klantnaam}
+                  </div>
+                  <div style={{ fontSize: '0.85em', color: '#666', marginTop: '2px' }}>
+                    #{klant.relatienummer} {klant.adres && `• ${klant.adres}`}
                   </div>
                 </div>
               ))
             ) : (
-              <div style={{ padding: '10px', color: '#666' }}>
-                Geen klanten gevonden
+              <div style={{ padding: '15px', color: '#999', textAlign: 'center' }}>
+                ❌ Geen klanten gevonden voor "{klantSearchTerm}"
               </div>
             )}
           </div>
@@ -114,27 +138,30 @@ const InspectieTab = ({
       </div>
     </div>
 
-    <div className="form-group">
-      <label>Relatienummer:</label>
-      <input
-        type="text"
-        className="form-control"
-        value={formData.relatienummer}
-        onChange={(e) => setFormData({...formData, relatienummer: e.target.value})}
-        readOnly={selectedKlant !== null}
-      />
-    </div>
-
-    <div className="form-group">
-      <label>Klantnaam:</label>
-      <input
-        type="text"
-        className="form-control"
-        value={formData.klantnaam}
-        onChange={(e) => setFormData({...formData, klantnaam: e.target.value})}
-        readOnly={selectedKlant !== null}
-      />
-    </div>
+    {/* Toon geselecteerde klant info */}
+    {selectedKlant && (
+      <div style={{
+        backgroundColor: '#e7f3ff',
+        padding: '15px',
+        borderRadius: '8px',
+        marginBottom: '20px',
+        border: '2px solid #007bff'
+      }}>
+        <div style={{ fontWeight: 'bold', color: '#007bff', marginBottom: '8px' }}>
+          ✅ Geselecteerde Klant
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div>
+            <span style={{ fontSize: '0.85em', color: '#666' }}>Relatienummer:</span>
+            <div style={{ fontWeight: 'bold' }}>{formData.relatienummer}</div>
+          </div>
+          <div>
+            <span style={{ fontSize: '0.85em', color: '#666' }}>Klantnaam:</span>
+            <div style={{ fontWeight: 'bold' }}>{formData.klantnaam}</div>
+          </div>
+        </div>
+      </div>
+    )}
 
     <div className="form-group">
       <label>Contactpersoon:</label>
