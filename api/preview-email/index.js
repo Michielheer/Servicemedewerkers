@@ -13,7 +13,8 @@ const generateEmailTemplate = (inspectieData) => {
     logomatten,
     wissers,
     toebehoren,
-    problemen
+    problemen,
+    algemeenOpmerkingen
   } = inspectieData;
 
   const formatDatum = (dateStr) => {
@@ -156,13 +157,12 @@ const generateEmailTemplate = (inspectieData) => {
     Hieronder vindt u een overzicht van onze bevindingen.</p>
     
     <div class="meta">
-      <p><strong>📋 Inspectie #${inspectieID}</strong></p>
       <p><strong>📅 Datum:</strong> ${formatDatum(datum)} om ${tijd || 'onbekend'}</p>
       <p><strong>👤 Inspecteur:</strong> ${inspecteur}</p>
     </div>
 
     <div class="section">
-      <h2>📊 Inspectie Resultaten</h2>
+      <h2>📊 Geïnspecteerde Materialen</h2>
       <div class="stats">
         <div class="stat-box">
           <span class="stat-number">${standaardMatten || 0}</span>
@@ -200,6 +200,22 @@ const generateEmailTemplate = (inspectieData) => {
       <p>Tijdens de inspectie zijn geen bijzonderheden geconstateerd. Alle materialen zijn in goede staat.</p>
     </div>
     `}
+
+    ${algemeenOpmerkingen && Object.keys(algemeenOpmerkingen).length > 0 ? `
+    <div class="section">
+      <h2>💬 Algemene Opmerkingen</h2>
+      <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; border-left: 4px solid #007bff;">
+        ${Object.entries(algemeenOpmerkingen)
+          .filter(([key, value]) => value && value.trim())
+          .map(([key, value]) => `
+            <p style="margin: 10px 0;">
+              <strong>${key.replace(/_/g, ' ')}:</strong><br>
+              ${value}
+            </p>
+          `).join('')}
+      </div>
+    </div>
+    ` : ''}
 
     <div class="section">
       <p>Heeft u vragen over dit rapport of wilt u een wijziging doorgeven? Neem dan contact met ons op.</p>
@@ -307,6 +323,20 @@ module.exports = async function (context, req) {
 
     const problemen = problemenResult.recordset.map(r => r.Probleem);
 
+    // Haal algemene opmerkingen op
+    const algemeenResult = await pool.request()
+      .input('id', sql.Int, inspectieID)
+      .query(`
+        SELECT VeldNaam, VeldWaarde
+        FROM dbo.InspectieAlgemeen
+        WHERE InspectieID = @id
+      `);
+
+    const algemeenOpmerkingen = {};
+    algemeenResult.recordset.forEach(row => {
+      algemeenOpmerkingen[row.VeldNaam] = row.VeldWaarde;
+    });
+
     // Genereer email HTML
     const emailData = {
       inspectieID: inspectie.InspectieID,
@@ -319,7 +349,8 @@ module.exports = async function (context, req) {
       logomatten: counts.logomatten,
       wissers: counts.wissers,
       toebehoren: counts.toebehoren,
-      problemen
+      problemen,
+      algemeenOpmerkingen
     };
 
     const htmlContent = generateEmailTemplate(emailData);
