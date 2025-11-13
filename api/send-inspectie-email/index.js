@@ -457,10 +457,11 @@ module.exports = async function (context, req) {
       body: {
         success: emailResult.success,
         message: emailResult.success 
-          ? `Email verzonden naar ${recipientEmail}` 
-          : 'Email preview gegenereerd (SendGrid niet geconfigureerd)',
+          ? `Email succesvol verzonden!` 
+          : 'Email preview gegenereerd (SMTP niet geconfigureerd)',
         recipient: recipientEmail,
-        preview: emailResult.preview || false
+        preview: emailResult.preview || false,
+        messageId: emailResult.messageId || null
       }
     };
 

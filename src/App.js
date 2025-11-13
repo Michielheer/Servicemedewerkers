@@ -2055,11 +2055,11 @@ function App() {
                       const result = await response.json();
                       
                       if (response.ok && result.success) {
-                        showMessage(`📧 Email verzonden naar ${result.recipient}`, 'success');
+                        showMessage(`Email succesvol verzonden naar ${result.recipient || 'klant'}!`, 'success');
                       } else if (result.preview) {
-                        showMessage('⚠️ Email preview gegenereerd (SendGrid niet actief)', 'warning');
+                        showMessage('Email preview gegenereerd (SMTP niet geconfigureerd)', 'warning');
                       } else {
-                        showMessage(`❌ Email fout: ${result.error || 'Onbekende fout'}`, 'error');
+                        showMessage(`Email kon niet worden verzonden: ${result.error || 'Onbekende fout'}`, 'error');
                       }
                     } catch (error) {
                       console.error('Email versturen fout:', error);
