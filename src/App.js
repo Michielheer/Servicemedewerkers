@@ -1914,16 +1914,53 @@ function App() {
               <p style={{ color: '#666', marginBottom: '25px' }}>
                 Inspectie #{completionOverlay.inspectieID} is opgeslagen in de database
               </p>
-              <button 
-                className="btn btn-primary" 
-                onClick={() => {
-                  setCompletionOverlay({ visible: false });
-                  if (completionOverlay.onClose) completionOverlay.onClose();
-                }}
-                style={{ minWidth: '200px', fontSize: '1.1em' }}
-              >
-                Nieuwe Inspectie Starten
-              </button>
+              
+              <div style={{ display: 'flex', gap: '15px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <button 
+                  className="btn btn-success" 
+                  onClick={async () => {
+                    setLoading(true);
+                    try {
+                      const config = getDataConfig();
+                      const response = await fetch(`${config.endpoints.apiBaseUrl}/send-inspectie-email`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ inspectieID: completionOverlay.inspectieID })
+                      });
+                      
+                      const result = await response.json();
+                      
+                      if (response.ok && result.success) {
+                        showMessage(`📧 Email verzonden naar ${result.recipient}`, 'success');
+                      } else if (result.preview) {
+                        showMessage('⚠️ Email preview gegenereerd (SendGrid niet actief)', 'warning');
+                      } else {
+                        showMessage(`❌ Email fout: ${result.error || 'Onbekende fout'}`, 'error');
+                      }
+                    } catch (error) {
+                      console.error('Email versturen fout:', error);
+                      showMessage(`❌ Email kon niet worden verzonden: ${error.message}`, 'error');
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  style={{ minWidth: '180px', fontSize: '1.05em' }}
+                  disabled={loading}
+                >
+                  {loading ? '📧 Versturen...' : '📧 Email Versturen'}
+                </button>
+                
+                <button 
+                  className="btn btn-primary" 
+                  onClick={() => {
+                    setCompletionOverlay({ visible: false });
+                    if (completionOverlay.onClose) completionOverlay.onClose();
+                  }}
+                  style={{ minWidth: '180px', fontSize: '1.05em' }}
+                >
+                  Nieuwe Inspectie
+                </button>
+              </div>
             </div>
           </div>
         </div>
