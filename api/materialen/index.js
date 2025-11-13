@@ -55,10 +55,9 @@ module.exports = async function (context, req) {
           Startdatum,
           Bezoekritme_getal,
           [groep]
-        FROM dbo.DatamodelExcel1 WITH (NOLOCK)
-        WHERE UPPER(REPLACE(REPLACE(ISNULL(Relatienummer, ''), ' ', ''), '[', '')) = @rel
-          AND (Activiteit = 'Matten' OR Activiteit = 'Wissers')
-        OPTION (MAXDOP 1, RECOMPILE)
+        FROM dbo.vw_MattenWissers WITH (NOLOCK)
+        WHERE relatienummer_normalized = @rel
+        OPTION (MAXDOP 1, FAST 5000)
       `);
 
     const standaard = [];

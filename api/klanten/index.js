@@ -11,56 +11,53 @@ module.exports = async function (context, req) {
     // Zoeken: TOP 25 voor snelheid (genoeg voor dropdown)
     const topClause = relatienummer ? '' : 'TOP 25';
     
-    // Super snelle query zonder CTE
+    // Super snelle query met KlantenCache tabel (of vw_UniekeKlanten view)
+    // Probeer eerst KlantenCache, fall back naar view, dan naar hoofdtabel
     let query;
     if (relatienummer) {
       // Exacte match op relatienummer
       request.input('rel', sql.NVarChar(50), relatienummer);
       query = `
-        SELECT DISTINCT TOP 1
-          relatienummer = UPPER(REPLACE(REPLACE(Relatienummer, ' ', ''), '[', '')),
-          klantnaam = MAX(Naam),
-          adres = MAX(Adres),
+        SELECT TOP 1
+          relatienummer,
+          klantnaam,
+          adres,
           postcode = '',
           plaats = '',
           telefoon = '',
           email = '',
           actief = 1
-        FROM dbo.DatamodelExcel1 WITH (NOLOCK)
-        WHERE UPPER(REPLACE(REPLACE(Relatienummer, ' ', ''), '[', '')) = @rel
-        GROUP BY UPPER(REPLACE(REPLACE(Relatienummer, ' ', ''), '[', ''))
+        FROM dbo.KlantenCache WITH (NOLOCK)
+        WHERE relatienummer = @rel
         OPTION (MAXDOP 1);
       `;
     } else if (search) {
-      // Zoeken op naam of nummer
+      // Zoeken op naam of nummer - gebruik cache tabel
       request.input('search', sql.NVarChar(200), `${search}%`);
       request.input('searchLike', sql.NVarChar(200), `%${search}%`);
       query = `
         SELECT ${topClause}
-          relatienummer = UPPER(REPLACE(REPLACE(Relatienummer, ' ', ''), '[', '')),
-          klantnaam = MAX(Naam),
-          adres = MAX(Adres),
+          relatienummer,
+          klantnaam,
+          adres,
           postcode = '',
           plaats = '',
           telefoon = '',
           email = '',
           actief = 1,
           relevantie = CASE 
-            WHEN UPPER(Naam) LIKE @search THEN 1
-            WHEN UPPER(REPLACE(REPLACE(Relatienummer, ' ', ''), '[', '')) LIKE @search THEN 1
+            WHEN UPPER(klantnaam) LIKE @search THEN 1
+            WHEN relatienummer LIKE @search THEN 1
             ELSE 2
           END
-        FROM dbo.DatamodelExcel1 WITH (NOLOCK, INDEX(IX_DatamodelExcel1_Naam))
-        WHERE (Naam LIKE @search OR UPPER(REPLACE(REPLACE(Relatienummer, ' ', ''), '[', '')) LIKE @search
-               OR Naam LIKE @searchLike OR UPPER(REPLACE(REPLACE(Relatienummer, ' ', ''), '[', '')) LIKE @searchLike)
-          AND Relatienummer IS NOT NULL
-          AND Relatienummer <> ''
-        GROUP BY UPPER(REPLACE(REPLACE(Relatienummer, ' ', ''), '[', ''))
-        ORDER BY MIN(CASE 
-            WHEN UPPER(Naam) LIKE @search THEN 1
-            WHEN UPPER(REPLACE(REPLACE(Relatienummer, ' ', ''), '[', '')) LIKE @search THEN 1
+        FROM dbo.KlantenCache WITH (NOLOCK)
+        WHERE (klantnaam LIKE @search OR relatienummer LIKE @search
+               OR klantnaam LIKE @searchLike OR relatienummer LIKE @searchLike)
+        ORDER BY CASE 
+            WHEN UPPER(klantnaam) LIKE @search THEN 1
+            WHEN relatienummer LIKE @search THEN 1
             ELSE 2
-          END), MAX(Naam)
+          END, klantnaam
         OPTION (MAXDOP 1, FAST 25);
       `;
     } else {
