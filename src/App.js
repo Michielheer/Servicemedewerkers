@@ -1352,45 +1352,15 @@ function App() {
       };
       localStorage.setItem('lavans_laatste_inspectie', JSON.stringify(fullInspectieData));
 
+      // Toon eenvoudige success melding
+      showMessage(`✅ Inspectie #${inspectieID} succesvol opgeslagen in database!`, 'success');
+      
+      // Update TODO's op basis van analyse
       const analyse = analyseInspectie(fullInspectieData);
-
       setTodoList(analyse.serviceTodos.map((text) => ({ text, done: false })));
       setKlantenserviceTodoList(analyse.klantenserviceTodos.map((text) => ({ text, done: false })));
-
-      setLastSavedInspectie(fullInspectieData);
-
-      let savedAtLabel = fullInspectieData.created_at;
-      try {
-        savedAtLabel = format(new Date(fullInspectieData.created_at), 'dd MMM yyyy HH:mm');
-      } catch (e) {
-        savedAtLabel = fullInspectieData.created_at;
-      }
-
-      let plannedMomentLabel = '';
-      if (fullInspectieData.datum) {
-        try {
-          const plannedMoment = new Date(`${fullInspectieData.datum}T${fullInspectieData.tijd || '00:00'}`);
-          plannedMomentLabel = format(plannedMoment, 'dd MMM yyyy HH:mm');
-        } catch (e) {
-          plannedMomentLabel = `${fullInspectieData.datum}${fullInspectieData.tijd ? ` ${fullInspectieData.tijd}` : ''}`;
-        }
-      }
-
-      setMessage('');
-      setMessageType('');
-
-      setCompletionOverlay({
-        visible: true,
-        logged: true, // Direct als logged markeren omdat het in DB staat
-        summary: {
-          ...analyse.summary,
-          savedAtLabel,
-          plannedMomentLabel,
-          inspectieID: `#${inspectieID}` // Toon ID in overlay
-        },
-      });
       
-      showMessage(`✅ Inspectie #${inspectieID} succesvol opgeslagen in database!`, 'success');
+      setLastSavedInspectie(fullInspectieData);
       
     } catch (error) {
       console.error('Inspectie opslaan fout:', error);
