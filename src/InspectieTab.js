@@ -24,7 +24,6 @@ const InspectieTab = ({
   toBool,
   boolToJaNee,
   saveInspectie,
-  sendToTMS,
   generateExportRapport,
   loading,
   // Klant selectie props
@@ -670,10 +669,7 @@ const InspectieTab = ({
 
     <div style={{ marginTop: '20px' }}>
       <button className="btn btn-primary" onClick={saveInspectie} disabled={loading}>
-        {loading ? 'Opslaan...' : 'Inspectie Opslaan'}
-      </button>
-      <button className="btn btn-secondary" onClick={sendToTMS} disabled={loading} style={{ marginLeft: '10px' }}>
-        {loading ? 'Verzenden...' : 'Verstuur naar TMS'}
+        {loading ? 'Opslaan...' : '💾 Inspectie Opslaan'}
       </button>
       <button className="btn btn-success" onClick={generateExportRapport} disabled={loading} style={{ marginLeft: '10px' }}>
         {loading ? 'Genereren...' : '📄 Klantrapport'}

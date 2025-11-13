@@ -1302,7 +1302,6 @@ function App() {
       setLoading(true);
       
       const inspectieData = {
-        id: Date.now(),
         relatienummer: formData.relatienummer,
         klantnaam: formData.klantnaam,
         contactpersoon: formData.contactpersoon,
@@ -1316,33 +1315,64 @@ function App() {
         toebehoren_data: toebehorenData,
         matten_concurrenten: mattenConcurrenten,
         wissers_concurrenten: wissersConcurrenten,
-        algemeen_values: formData.algemeen_values,
-        created_at: new Date().toISOString()
+        algemeen_values: formData.algemeen_values
       };
 
-      localStorage.setItem('lavans_laatste_inspectie', JSON.stringify(inspectieData));
+      // Validatie
+      if (!inspectieData.relatienummer || !inspectieData.klantnaam) {
+        showMessage('Selecteer eerst een klant voordat je de inspectie opslaat.', 'error');
+        setLoading(false);
+        return;
+      }
 
-      const analyse = analyseInspectie(inspectieData);
+      const config = getDataConfig();
+      
+      // POST naar API
+      const response = await fetch(`${config.endpoints.apiBaseUrl}/inspecties`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(inspectieData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.details || errorData.error || 'Opslaan mislukt');
+      }
+
+      const result = await response.json();
+      const inspectieID = result.inspectieID;
+
+      // Ook lokaal opslaan voor backup
+      const fullInspectieData = {
+        ...inspectieData,
+        id: inspectieID,
+        created_at: new Date().toISOString()
+      };
+      localStorage.setItem('lavans_laatste_inspectie', JSON.stringify(fullInspectieData));
+
+      const analyse = analyseInspectie(fullInspectieData);
 
       setTodoList(analyse.serviceTodos.map((text) => ({ text, done: false })));
       setKlantenserviceTodoList(analyse.klantenserviceTodos.map((text) => ({ text, done: false })));
 
-      setLastSavedInspectie(inspectieData);
+      setLastSavedInspectie(fullInspectieData);
 
-      let savedAtLabel = inspectieData.created_at;
+      let savedAtLabel = fullInspectieData.created_at;
       try {
-        savedAtLabel = format(new Date(inspectieData.created_at), 'dd MMM yyyy HH:mm');
+        savedAtLabel = format(new Date(fullInspectieData.created_at), 'dd MMM yyyy HH:mm');
       } catch (e) {
-        savedAtLabel = inspectieData.created_at;
+        savedAtLabel = fullInspectieData.created_at;
       }
 
       let plannedMomentLabel = '';
-      if (inspectieData.datum) {
+      if (fullInspectieData.datum) {
         try {
-          const plannedMoment = new Date(`${inspectieData.datum}T${inspectieData.tijd || '00:00'}`);
+          const plannedMoment = new Date(`${fullInspectieData.datum}T${fullInspectieData.tijd || '00:00'}`);
           plannedMomentLabel = format(plannedMoment, 'dd MMM yyyy HH:mm');
         } catch (e) {
-          plannedMomentLabel = `${inspectieData.datum}${inspectieData.tijd ? ` ${inspectieData.tijd}` : ''}`;
+          plannedMomentLabel = `${fullInspectieData.datum}${fullInspectieData.tijd ? ` ${fullInspectieData.tijd}` : ''}`;
         }
       }
 
@@ -1351,16 +1381,20 @@ function App() {
 
       setCompletionOverlay({
         visible: true,
-        logged: false,
+        logged: true, // Direct als logged markeren omdat het in DB staat
         summary: {
           ...analyse.summary,
           savedAtLabel,
           plannedMomentLabel,
+          inspectieID: `#${inspectieID}` // Toon ID in overlay
         },
       });
       
+      showMessage(`✅ Inspectie #${inspectieID} succesvol opgeslagen in database!`, 'success');
+      
     } catch (error) {
-      showMessage(`Fout bij opslaan: ${error.message}`, 'error');
+      console.error('Inspectie opslaan fout:', error);
+      showMessage(`❌ Fout bij opslaan: ${error.message}`, 'error');
     } finally {
       setLoading(false);
     }
@@ -1398,61 +1432,7 @@ function App() {
     });
   };
 
-  const sendToTMS = async () => {
-    try {
-      setLoading(true);
-      
-      const inspectieData = {
-        relatienummer: formData.relatienummer,
-        klantnaam: formData.klantnaam,
-        contactpersoon: formData.contactpersoon,
-        contact_email: formData.contact_email,
-        inspecteur: formData.inspecteur,
-        datum: formData.datum,
-        tijd: formData.tijd,
-        standaard_matten_data: standaardMattenData,
-        logomatten_data: logomattenData,
-        wissers_data: wissersData,
-        toebehoren_data: toebehorenData,
-        matten_concurrenten: mattenConcurrenten,
-        wissers_concurrenten: wissersConcurrenten,
-        algemeen_values: formData.algemeen_values,
-        todo_list: todoList,
-        klantenservice_todo_list: klantenserviceTodoList,
-        created_at: new Date().toISOString()
-      };
-
-      // Simuleer API call naar TMS
-      const response = await fetch('/api/tms/inspectie', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(inspectieData)
-      });
-
-      if (response.ok) {
-        showMessage('Inspectie succesvol naar TMS gestuurd!', 'success');
-      } else {
-        throw new Error('TMS API error');
-      }
-      
-    } catch (error) {
-      // Fallback: simuleer succesvolle verzending
-      showMessage('Inspectie succesvol naar TMS gestuurd! (Simulatie)', 'success');
-      console.log('TMS Data:', {
-        relatienummer: formData.relatienummer,
-        klantnaam: formData.klantnaam,
-        inspecteur: formData.inspecteur,
-        datum: formData.datum,
-        matten: standaardMattenData.length + logomattenData.length,
-        wissers: wissersData.length,
-        todos: todoList.length
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  // sendToTMS functie verwijderd - inspectie wordt direct opgeslagen in database via saveInspectie
 
   const generateExportRapport = () => {
     const pdf = new jsPDF('p', 'mm', 'a4');
@@ -1872,7 +1852,6 @@ function App() {
             toBool={toBool}
             boolToJaNee={boolToJaNee}
             saveInspectie={saveInspectie}
-            sendToTMS={sendToTMS}
             generateExportRapport={generateExportRapport}
             loading={loading}
             // Klant selectie props
