@@ -300,101 +300,107 @@ const InspectieTab = ({
         />
       </div>
 
-      {/* Standaard matten sectie */}
-      <h4>Standaard Matten</h4>
-      <div className="responsive-table">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Productnummer</th>
-              <th>Productomschrijving</th>
-              <th>Afdeling</th>
-              <th>Ligplaats</th>
-              <th>Aantal</th>
-              <th>Aanwezig</th>
-              <th>Schoon/Onbeschadigd</th>
-              <th>Vuilgraad</th>
-              <th>Opmerkingen</th>
-            </tr>
-          </thead>
-          <tbody>
-            {standaardMattenData.map((mat, index) => (
-              <tr key={index}>
-                <td>{mat.productnummer}</td>
-                <td>{mat.mat_type}</td>
-                <td>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={mat.afdeling}
-                    onChange={(e) => updateStandaardMatData(index, 'afdeling', e.target.value)}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={mat.ligplaats}
-                    onChange={(e) => updateStandaardMatData(index, 'ligplaats', e.target.value)}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    className="form-control"
-                    min="0"
-                    value={mat.aantal}
-                    onChange={(e) => updateStandaardMatData(index, 'aantal', parseInt(e.target.value) || 0)}
-                  />
-                </td>
-                <td>
-                  <div className="checkbox-group">
-                    <input
-                      type="checkbox"
-                      checked={toBool(mat.aanwezig)}
-                      onChange={(e) => updateStandaardMatData(index, 'aanwezig', e.target.checked)}
-                    />
-                    <span>{boolToJaNee(toBool(mat.aanwezig))}</span>
-                  </div>
-                </td>
-                <td>
-                  <div className="checkbox-group">
-                    <input
-                      type="checkbox"
-                      checked={toBool(mat.schoon_onbeschadigd)}
-                      onChange={(e) => updateStandaardMatData(index, 'schoon_onbeschadigd', e.target.checked)}
-                    />
-                    <span>{boolToJaNee(toBool(mat.schoon_onbeschadigd))}</span>
-                  </div>
-                </td>
-                <td>
-                  <select
-                    className="form-control vuilgraad-dropdown"
-                    value={mat.vuilgraad_label}
-                    onChange={(e) => updateStandaardMatData(index, 'vuilgraad_label', e.target.value)}
-                  >
-                    <option value="">Selecteer</option>
-                    <option value="Schoon">Schoon</option>
-                    <option value="Licht vervuild">Licht vervuild</option>
-                    <option value="Sterk vervuild">Sterk vervuild</option>
-                  </select>
-                </td>
-                <td>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={mat.opmerkingen || ''}
-                    onChange={(e) => updateStandaardMatData(index, 'opmerkingen', e.target.value)}
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {/* Standaard matten sectie - alleen tonen als er data is */}
+      {standaardMattenData.length > 0 && (
+        <>
+          <h4>Standaard Matten</h4>
+          <div className="responsive-table">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Productnummer</th>
+                  <th>Productomschrijving</th>
+                  <th>Afdeling</th>
+                  <th>Ligplaats</th>
+                  <th>Aantal</th>
+                  <th>Aanwezig</th>
+                  <th>Schoon/Onbeschadigd</th>
+                  <th>Vuilgraad</th>
+                  <th>Opmerkingen</th>
+                </tr>
+              </thead>
+              <tbody>
+                {standaardMattenData.map((mat, index) => (
+                  <tr key={index}>
+                    <td>{mat.productnummer}</td>
+                    <td>{mat.mat_type}</td>
+                    <td>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={mat.afdeling}
+                        onChange={(e) => updateStandaardMatData(index, 'afdeling', e.target.value)}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={mat.ligplaats}
+                        onChange={(e) => updateStandaardMatData(index, 'ligplaats', e.target.value)}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        className="form-control"
+                        min="0"
+                        value={mat.aantal}
+                        onChange={(e) => updateStandaardMatData(index, 'aantal', parseInt(e.target.value) || 0)}
+                      />
+                    </td>
+                    <td>
+                      <div className="checkbox-group">
+                        <input
+                          type="checkbox"
+                          checked={toBool(mat.aanwezig)}
+                          onChange={(e) => updateStandaardMatData(index, 'aanwezig', e.target.checked)}
+                        />
+                        <span>{boolToJaNee(toBool(mat.aanwezig))}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="checkbox-group">
+                        <input
+                          type="checkbox"
+                          checked={toBool(mat.schoon_onbeschadigd)}
+                          onChange={(e) => updateStandaardMatData(index, 'schoon_onbeschadigd', e.target.checked)}
+                        />
+                        <span>{boolToJaNee(toBool(mat.schoon_onbeschadigd))}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <select
+                        className="form-control vuilgraad-dropdown"
+                        value={mat.vuilgraad_label}
+                        onChange={(e) => updateStandaardMatData(index, 'vuilgraad_label', e.target.value)}
+                      >
+                        <option value="">Selecteer</option>
+                        <option value="Schoon">Schoon</option>
+                        <option value="Licht vervuild">Licht vervuild</option>
+                        <option value="Sterk vervuild">Sterk vervuild</option>
+                      </select>
+                    </td>
+                    <td>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={mat.opmerkingen || ''}
+                        onChange={(e) => updateStandaardMatData(index, 'opmerkingen', e.target.value)}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
 
-      {/* Logomatten sectie */}
-      <h4>Logomatten</h4>
+      {/* Logomatten sectie - alleen tonen als er data is */}
+      {logomattenData.length > 0 && (
+        <>
+          <h4>Logomatten</h4>
       <div className="responsive-table">
         <table className="table">
           <thead>
@@ -497,6 +503,8 @@ const InspectieTab = ({
           </tbody>
         </table>
       </div>
+        </>
+      )}
     </div>
 
     <div className="card">
@@ -564,47 +572,53 @@ const InspectieTab = ({
         />
       </div>
 
-      {/* Wissers tabel */}
-      <h4>Aantal wissers</h4>
-      <div className="responsive-table">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Artikel</th>
-              <th>Aantal geteld</th>
-              <th>Waarvan gebruikt</th>
-            </tr>
-          </thead>
-          <tbody>
-            {wissersData.map((wisser, index) => (
-              <tr key={index}>
-                <td>{wisser.artikel}</td>
-                <td>
-                  <input
-                    type="number"
-                    className="form-control"
-                    min="0"
-                    value={wisser.aantal_geteld}
-                    onChange={(e) => updateWisserData(index, 'aantal_geteld', parseInt(e.target.value) || 0)}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    className="form-control"
-                    min="0"
-                    value={wisser.waarvan_gebruikt}
-                    onChange={(e) => updateWisserData(index, 'waarvan_gebruikt', parseInt(e.target.value) || 0)}
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {/* Wissers tabel - alleen tonen als er data is */}
+      {wissersData.length > 0 && (
+        <>
+          <h4>Aantal wissers</h4>
+          <div className="responsive-table">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Artikel</th>
+                  <th>Aantal geteld</th>
+                  <th>Waarvan gebruikt</th>
+                </tr>
+              </thead>
+              <tbody>
+                {wissersData.map((wisser, index) => (
+                  <tr key={index}>
+                    <td>{wisser.artikel}</td>
+                    <td>
+                      <input
+                        type="number"
+                        className="form-control"
+                        min="0"
+                        value={wisser.aantal_geteld}
+                        onChange={(e) => updateWisserData(index, 'aantal_geteld', parseInt(e.target.value) || 0)}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        className="form-control"
+                        min="0"
+                        value={wisser.waarvan_gebruikt}
+                        onChange={(e) => updateWisserData(index, 'waarvan_gebruikt', parseInt(e.target.value) || 0)}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
 
-      {/* Toebehoren tabel */}
-      <h4>Stelen en toebehoren</h4>
+      {/* Toebehoren tabel - alleen tonen als er data is */}
+      {toebehorenData.length > 0 && (
+        <>
+          <h4>Stelen en toebehoren</h4>
       <div className="responsive-table">
         <table className="table">
           <thead>
@@ -642,6 +656,8 @@ const InspectieTab = ({
           </tbody>
         </table>
       </div>
+        </>
+      )}
     </div>
 
     <div className="card">
