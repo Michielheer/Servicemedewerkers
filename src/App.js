@@ -1352,15 +1352,56 @@ function App() {
       };
       localStorage.setItem('lavans_laatste_inspectie', JSON.stringify(fullInspectieData));
 
-      // Toon eenvoudige success melding
-      showMessage(`✅ Inspectie #${inspectieID} succesvol opgeslagen in database!`, 'success');
-      
       // Update TODO's op basis van analyse
       const analyse = analyseInspectie(fullInspectieData);
       setTodoList(analyse.serviceTodos.map((text) => ({ text, done: false })));
       setKlantenserviceTodoList(analyse.klantenserviceTodos.map((text) => ({ text, done: false })));
       
       setLastSavedInspectie(fullInspectieData);
+      
+      // Toon success melding met reset optie
+      const resetForm = () => {
+        // Reset alle form data
+        setFormData({
+          relatienummer: '',
+          klantnaam: '',
+          contactpersoon: '',
+          contact_email: '',
+          inspecteur: currentUser?.name || 'Angelo',
+          datum: format(new Date(), 'yyyy-MM-dd'),
+          tijd: format(new Date(), 'HH:mm'),
+          algemeen_values: {}
+        });
+        setSelectedKlant(null);
+        setKlantSearchTerm('');
+        setStandaardMattenData([]);
+        setLogomattenData([]);
+        setWissersData([]);
+        setToebehorenData([]);
+        setMattenConcurrenten({
+          andere_mat_aanwezig: 'Nee',
+          andere_mat_concurrent: '',
+          aantal_concurrent: 0,
+          aantal_koop: 0
+        });
+        setWissersConcurrenten({
+          wissers_concurrent: 'Nee',
+          wissers_concurrent_concurrent: '',
+          wissers_concurrent_toelichting: '',
+          andere_zaken: ''
+        });
+        setContactpersonen([]);
+      };
+      
+      // Show completion overlay
+      setCompletionOverlay({
+        visible: true,
+        inspectieID,
+        klantnaam: formData.klantnaam,
+        onClose: resetForm
+      });
+      
+      showMessage(`✅ Inspectie #${inspectieID} succesvol opgeslagen!`, 'success');
       
     } catch (error) {
       console.error('Inspectie opslaan fout:', error);
@@ -1856,6 +1897,38 @@ function App() {
         )}
 
       </div>
+      
+      {/* Eenvoudige completion overlay */}
+      {completionOverlay.visible && (
+        <div className="completion-overlay" onClick={() => {
+          setCompletionOverlay({ visible: false });
+          if (completionOverlay.onClose) completionOverlay.onClose();
+        }}>
+          <div className="completion-card-simple" onClick={(e) => e.stopPropagation()}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '3em', marginBottom: '20px' }}>✅</div>
+              <h2 style={{ marginBottom: '15px', color: '#28a745' }}>Inspectie Afgerond!</h2>
+              <p style={{ fontSize: '1.1em', marginBottom: '10px' }}>
+                <strong>{completionOverlay.klantnaam}</strong>
+              </p>
+              <p style={{ color: '#666', marginBottom: '25px' }}>
+                Inspectie #{completionOverlay.inspectieID} is opgeslagen in de database
+              </p>
+              <button 
+                className="btn btn-primary" 
+                onClick={() => {
+                  setCompletionOverlay({ visible: false });
+                  if (completionOverlay.onClose) completionOverlay.onClose();
+                }}
+                style={{ minWidth: '200px', fontSize: '1.1em' }}
+              >
+                Nieuwe Inspectie Starten
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {completionOverlay.visible && completionSummary && (
         <div className="completion-overlay">
           <div

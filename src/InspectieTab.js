@@ -587,8 +587,11 @@ const InspectieTab = ({
                         type="number"
                         className="form-control"
                         min="0"
-                        value={wisser.aantal_geteld}
-                        onChange={(e) => updateWisserData(index, 'aantal_geteld', parseInt(e.target.value) || 0)}
+                        value={wisser.aantal_geteld || ''}
+                        onChange={(e) => {
+                          const val = e.target.value === '' ? 0 : parseInt(e.target.value);
+                          updateWisserData(index, 'aantal_geteld', val);
+                        }}
                       />
                     </td>
                     <td>
@@ -596,11 +599,13 @@ const InspectieTab = ({
                         type="number"
                         className="form-control"
                         min="0"
-                        value={wisser.waarvan_gebruikt}
-                        onChange={(e) => updateWisserData(index, 'waarvan_gebruikt', parseInt(e.target.value) || 0)}
+                        value={wisser.waarvan_gebruikt || ''}
+                        onChange={(e) => {
+                          const val = e.target.value === '' ? 0 : parseInt(e.target.value);
+                          updateWisserData(index, 'waarvan_gebruikt', val);
+                        }}
                       />
-                    </td>
-                  </tr>
+                    </td>                  </tr>
                 ))}
               </tbody>
             </table>
