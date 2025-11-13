@@ -38,6 +38,13 @@ module.exports = async function (context, req) {
       await transaction.begin();
 
       // 1. Insert hoofdrecord Inspectie
+      // Converteer tijd string naar SQL TIME formaat (HH:MM:SS)
+      let tijdValue = tijd || new Date().toTimeString().split(' ')[0];
+      // Ensure HH:MM:SS format
+      if (tijdValue && tijdValue.split(':').length === 2) {
+        tijdValue = `${tijdValue}:00`; // Add seconds if missing
+      }
+      
       const inspectieResult = await transaction.request()
         .input('relatienummer', sql.NVarChar(50), relatienummer)
         .input('klantnaam', sql.NVarChar(200), klantnaam)
@@ -45,7 +52,7 @@ module.exports = async function (context, req) {
         .input('contactEmail', sql.NVarChar(200), contact_email || null)
         .input('inspecteur', sql.NVarChar(100), inspecteur || null)
         .input('datum', sql.Date, datum || new Date())
-        .input('tijd', sql.Time, tijd || new Date().toTimeString().split(' ')[0])
+        .input('tijd', sql.VarChar(8), tijdValue) // Use VARCHAR instead of Time for simplicity
         .query(`
           INSERT INTO dbo.Inspecties 
             (Relatienummer, Klantnaam, Contactpersoon, ContactEmail, Inspecteur, InspectieDatum, InspectieTijd)
