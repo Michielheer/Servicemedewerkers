@@ -1253,16 +1253,15 @@ function App() {
     const config = getDataConfig();
     
     // Als er geen zoekterm is, toon niets
-    if (!klantSearchTerm || klantSearchTerm.trim().length < 2) {
+    if (!klantSearchTerm || klantSearchTerm.trim().length < 3) {
       setKlanten([]);
       return;
     }
 
-    // Debounce: wacht 500ms na laatste toetsaanslag voor betere performance
+    // Debounce: wacht 400ms na laatste toetsaanslag
     const timeoutId = setTimeout(async () => {
       if (config.mode === 'api') {
         try {
-          setKlanten([]); // Leeg oude resultaten voor betere UX
           const response = await fetch(
             `${config.endpoints.klantenApi}?search=${encodeURIComponent(klantSearchTerm)}`,
             { cache: 'no-store' }
@@ -1282,7 +1281,7 @@ function App() {
         // CSV mode: gebruik hardcoded data
         setKlanten(HARDCODED_CRM_KLANTEN);
       }
-    }, 500);
+    }, 400);
 
     return () => clearTimeout(timeoutId);
   }, [isAuthenticated, klantSearchTerm]);

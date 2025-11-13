@@ -65,7 +65,7 @@ const InspectieTab = ({
         <input
           type="text"
           className="form-control"
-          placeholder="Typ naam of nummer (min. 2 karakters)..."
+          placeholder="Typ naam of nummer (min. 3 karakters)..."
           value={klantSearchTerm}
           onChange={(e) => {
             setKlantSearchTerm(e.target.value);
@@ -76,15 +76,15 @@ const InspectieTab = ({
             fontSize: '1.05em',
             padding: '12px',
             borderWidth: '2px',
-            borderColor: showKlantDropdown && klantSearchTerm.length >= 2 ? '#007bff' : '#ccc'
+            borderColor: showKlantDropdown && klantSearchTerm.length >= 3 ? '#007bff' : '#ccc'
           }}
         />
-        {klantSearchTerm.length > 0 && klantSearchTerm.length < 2 && (
+        {klantSearchTerm.length > 0 && klantSearchTerm.length < 3 && (
           <div style={{ fontSize: '0.85em', color: '#999', marginTop: '4px' }}>
-            Typ nog {2 - klantSearchTerm.length} karakter(s)...
+            Typ nog {3 - klantSearchTerm.length} karakter(s)...
           </div>
         )}
-        {showKlantDropdown && klantSearchTerm.length >= 2 && (
+        {showKlantDropdown && klantSearchTerm.length >= 3 && (
           <div style={{
             position: 'absolute',
             top: '100%',
