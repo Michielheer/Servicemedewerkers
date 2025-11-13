@@ -2,11 +2,13 @@ const { getPool, sql } = require('../shared/db');
 
 const NORMALIZE_REL_QUERY = `
 WITH klanten AS (
-  SELECT
+  SELECT TOP 1000
     rel_norm = UPPER(REPLACE(REPLACE(ISNULL(d.Relatienummer, ''), ' ', ''), '[', '')),
     klantnaam = MAX(ISNULL(d.Naam, ''))
-  FROM dbo.DatamodelExcel1 d
-  WHERE d.Relatienummer IS NOT NULL AND d.Relatienummer <> ''
+  FROM dbo.DatamodelExcel1 d WITH (NOLOCK)
+  WHERE d.Relatienummer IS NOT NULL 
+    AND d.Relatienummer <> ''
+    AND (@rel IS NULL OR UPPER(REPLACE(REPLACE(d.Relatienummer, ' ', ''), '[', '')) = @rel)
   GROUP BY UPPER(REPLACE(REPLACE(ISNULL(d.Relatienummer, ''), ' ', ''), '[', ''))
 )
 SELECT
@@ -27,11 +29,12 @@ SELECT
   [Financieel contact] = CASE WHEN c.financieel = 1 THEN 'Ja' ELSE 'Nee' END,
   Actief = CASE WHEN c.nog_in_dienst = 1 THEN 'Ja' ELSE 'Nee' END,
   [Klantenportaal gebruikersnaam] = ISNULL(c.klantenportaal, '')
-FROM dbo.Contactpersonen c
+FROM dbo.Contactpersonen c WITH (NOLOCK)
 LEFT JOIN klanten k
   ON k.rel_norm = UPPER(REPLACE(REPLACE(ISNULL(c.relatienummer, ''), ' ', ''), '[', ''))
 WHERE (@rel IS NULL OR UPPER(REPLACE(REPLACE(ISNULL(c.relatienummer, ''), ' ', ''), '[', '')) = @rel)
-  AND (@relatieKey IS NULL OR k.klantnaam = @relatieKey);
+  AND (@relatieKey IS NULL OR k.klantnaam = @relatieKey)
+OPTION (MAXDOP 1);
 `;
 
 module.exports = async function (context, req) {

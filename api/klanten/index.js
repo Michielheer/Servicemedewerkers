@@ -10,19 +10,22 @@ module.exports = async function (context, req) {
     request.input('rel', sql.NVarChar(50), relatienummer || null);
     request.input('search', sql.NVarChar(200), search ? `%${search}%` : null);
 
-    // Als er gezocht wordt of een specifiek relatienummer wordt gevraagd, geen limiet
-    const hasFilter = relatienummer || search;
-    const topClause = hasFilter ? '' : 'TOP 5000';
+    // Zoeken: TOP 50 voor snelheid, specifiek relatienummer: geen limiet
+    const topClause = relatienummer ? '' : 'TOP 50';
     
     const result = await request.query(`
       WITH normalized AS (
-        SELECT
+        SELECT TOP 1000
           rel_norm = UPPER(REPLACE(REPLACE(ISNULL(Relatienummer, ''), ' ', ''), '[', '')),
           naam = ISNULL(Naam, ''),
           adres = ISNULL(Adres, '')
-        FROM dbo.DatamodelExcel1
-        WHERE Relatienummer IS NOT NULL AND Relatienummer <> ''
+        FROM dbo.DatamodelExcel1 WITH (NOLOCK)
+        WHERE Relatienummer IS NOT NULL 
+          AND Relatienummer <> ''
           AND (@rel IS NULL OR UPPER(REPLACE(REPLACE(Relatienummer, ' ', ''), '[', '')) = @rel)
+          AND (@search IS NULL 
+               OR Naam LIKE @search 
+               OR UPPER(REPLACE(REPLACE(Relatienummer, ' ', ''), '[', '')) LIKE @search)
       )
       SELECT ${topClause}
         relatienummer = rel_norm,
@@ -34,11 +37,9 @@ module.exports = async function (context, req) {
         email = '',
         actief = 1
       FROM normalized
-      WHERE @search IS NULL
-         OR naam LIKE @search
-         OR rel_norm LIKE @search
       GROUP BY rel_norm
-      ORDER BY MAX(naam);
+      ORDER BY MAX(naam)
+      OPTION (MAXDOP 1);
     `);
 
     context.res = {

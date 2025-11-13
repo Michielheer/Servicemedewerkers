@@ -1258,10 +1258,11 @@ function App() {
       return;
     }
 
-    // Debounce: wacht 300ms na laatste toetsaanslag
+    // Debounce: wacht 500ms na laatste toetsaanslag voor betere performance
     const timeoutId = setTimeout(async () => {
       if (config.mode === 'api') {
         try {
+          setKlanten([]); // Leeg oude resultaten voor betere UX
           const response = await fetch(
             `${config.endpoints.klantenApi}?search=${encodeURIComponent(klantSearchTerm)}`,
             { cache: 'no-store' }
@@ -1281,7 +1282,7 @@ function App() {
         // CSV mode: gebruik hardcoded data
         setKlanten(HARDCODED_CRM_KLANTEN);
       }
-    }, 300);
+    }, 500);
 
     return () => clearTimeout(timeoutId);
   }, [isAuthenticated, klantSearchTerm]);

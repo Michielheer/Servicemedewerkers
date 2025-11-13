@@ -37,7 +37,7 @@ module.exports = async function (context, req) {
     const result = await pool.request()
       .input('rel', sql.NVarChar(50), relatienummer)
       .query(`
-        SELECT TOP 10000
+        SELECT TOP 5000
           Abonnementsregelnummer,
           Contractregelnummer,
           Relatienummer,
@@ -55,9 +55,10 @@ module.exports = async function (context, req) {
           Startdatum,
           Bezoekritme_getal,
           [groep]
-        FROM dbo.DatamodelExcel1
+        FROM dbo.DatamodelExcel1 WITH (NOLOCK)
         WHERE UPPER(REPLACE(REPLACE(ISNULL(Relatienummer, ''), ' ', ''), '[', '')) = @rel
-        OPTION (MAXDOP 1)
+          AND (Activiteit = 'Matten' OR Activiteit = 'Wissers')
+        OPTION (MAXDOP 1, RECOMPILE)
       `);
 
     const standaard = [];
