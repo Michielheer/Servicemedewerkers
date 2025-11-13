@@ -772,130 +772,7 @@ function App() {
     }
   }, [materiaalCatalog.loaded, showMessage]);
 
-  const hydrateKlantData = useCallback(
-    (relatienummer, klantnaam, { fallbackContacts = [], updateContactFields = false } = {}) => {
-      const normalizedRelNr = normalizeRelatienummer(relatienummer || '');
-      const naamVoorKey = klantnaam || '';
-      const config = dataConfigRef.current;
-
-      if (contactCatalog.loaded) {
-        const contactsFromCatalog = resolveContactsFromCatalog(
-          contactCatalog,
-          normalizedRelNr,
-          naamVoorKey,
-          fallbackContacts
-        );
-
-        setContactpersonen(cloneRecords(contactsFromCatalog));
-
-        if (updateContactFields) {
-          const primary = getPrimaryContactForForm(contactsFromCatalog, formatNaam);
-          setFormData((prev) => {
-            const nextName = primary ? primary.displayName : '';
-            const nextEmail = primary ? primary.email : '';
-            if (prev.contactpersoon === nextName && prev.contact_email === nextEmail) {
-              return prev;
-            }
-            return {
-              ...prev,
-              contactpersoon: nextName,
-              contact_email: nextEmail
-            };
-          });
-        }
-      } else if (fallbackContacts.length > 0) {
-        const clonedFallback = cloneRecords(fallbackContacts);
-        setContactpersonen(clonedFallback);
-        if (updateContactFields) {
-          const primary = getPrimaryContactForForm(clonedFallback, formatNaam);
-          setFormData((prev) => {
-            const nextName = primary ? primary.displayName : '';
-            const nextEmail = primary ? primary.email : '';
-            if (prev.contactpersoon === nextName && prev.contact_email === nextEmail) {
-              return prev;
-            }
-            return {
-              ...prev,
-              contactpersoon: nextName,
-              contact_email: nextEmail
-            };
-          });
-        }
-      } else if (updateContactFields) {
-        setContactpersonen([]);
-        setFormData((prev) => ({
-          ...prev,
-          contactpersoon: '',
-          contact_email: ''
-        }));
-      }
-
-      if (config.mode === 'api') {
-        if (normalizedRelNr) {
-          fetch(`${config.endpoints.materialenApi}?relatienummer=${encodeURIComponent(normalizedRelNr)}`, {
-            cache: 'no-store'
-          })
-            .then((res) => {
-              if (!res.ok) {
-                throw new Error(`Materiaal API fout (status ${res.status})`);
-              }
-              return res.json();
-            })
-            .then((data) => {
-              const standaard = data?.standaard || [];
-              const logo = data?.logo || [];
-              const wissers = data?.wissers || [];
-              const toebehoren = data?.toebehoren || [];
-
-              setStandaardMattenData(cloneRecords(standaard));
-              setLogomattenData(cloneRecords(logo));
-              setWissersData(cloneRecords(wissers));
-              setToebehorenData(cloneRecords(toebehoren));
-            })
-            .catch((error) => {
-              console.error('Materiaal API fout:', error);
-              setStandaardMattenData([]);
-              setLogomattenData([]);
-              setWissersData([]);
-              setToebehorenData([]);
-            });
-        } else {
-          setStandaardMattenData([]);
-          setLogomattenData([]);
-          setWissersData([]);
-          setToebehorenData([]);
-        }
-      } else if (materiaalCatalog.loaded) {
-        const standaard = materiaalCatalog.standaard[normalizedRelNr] || [];
-        const logo = materiaalCatalog.logo[normalizedRelNr] || [];
-        const wissers = materiaalCatalog.wissers[normalizedRelNr] || [];
-        const toebehoren = materiaalCatalog.toebehoren[normalizedRelNr] || [];
-
-        setStandaardMattenData(cloneRecords(standaard));
-        setLogomattenData(cloneRecords(logo));
-        setWissersData(cloneRecords(wissers));
-        setToebehorenData(cloneRecords(toebehoren));
-      } else {
-        setStandaardMattenData([]);
-        setLogomattenData([]);
-        setWissersData([]);
-        setToebehorenData([]);
-      }
-    },
-    [
-      contactCatalog,
-      formatNaam,
-      materiaalCatalog,
-      setContactpersonen,
-      setFormData,
-      setLogomattenData,
-      setStandaardMattenData,
-      setToebehorenData,
-      setWissersData
-    ]
-  );
-
-  const analyseInspectie = (inspectieData) => {
+  const analyseInspectie = useCallback((inspectieData) => {
     const serviceTodos = [];
     const klantenserviceTodos = [];
 
@@ -1044,7 +921,178 @@ function App() {
         klantenPreview: klantenserviceTodos.slice(0, 2),
       },
     };
-  };
+  }, [berekenLeeftijd]);
+
+  const hydrateKlantData = useCallback(
+    (relatienummer, klantnaam, { fallbackContacts = [], updateContactFields = false } = {}) => {
+      const normalizedRelNr = normalizeRelatienummer(relatienummer || '');
+      const naamVoorKey = klantnaam || '';
+      const config = dataConfigRef.current;
+
+      if (contactCatalog.loaded) {
+        const contactsFromCatalog = resolveContactsFromCatalog(
+          contactCatalog,
+          normalizedRelNr,
+          naamVoorKey,
+          fallbackContacts
+        );
+
+        setContactpersonen(cloneRecords(contactsFromCatalog));
+
+        if (updateContactFields) {
+          const primary = getPrimaryContactForForm(contactsFromCatalog, formatNaam);
+          setFormData((prev) => {
+            const nextName = primary ? primary.displayName : '';
+            const nextEmail = primary ? primary.email : '';
+            if (prev.contactpersoon === nextName && prev.contact_email === nextEmail) {
+              return prev;
+            }
+            return {
+              ...prev,
+              contactpersoon: nextName,
+              contact_email: nextEmail
+            };
+          });
+        }
+      } else if (fallbackContacts.length > 0) {
+        const clonedFallback = cloneRecords(fallbackContacts);
+        setContactpersonen(clonedFallback);
+        if (updateContactFields) {
+          const primary = getPrimaryContactForForm(clonedFallback, formatNaam);
+          setFormData((prev) => {
+            const nextName = primary ? primary.displayName : '';
+            const nextEmail = primary ? primary.email : '';
+            if (prev.contactpersoon === nextName && prev.contact_email === nextEmail) {
+              return prev;
+            }
+            return {
+              ...prev,
+              contactpersoon: nextName,
+              contact_email: nextEmail
+            };
+          });
+        }
+      } else if (updateContactFields) {
+        setContactpersonen([]);
+        setFormData((prev) => ({
+          ...prev,
+          contactpersoon: '',
+          contact_email: ''
+        }));
+      }
+
+      if (config.mode === 'api') {
+        if (normalizedRelNr) {
+          setLoading(true); // Toon loading indicator
+          fetch(`${config.endpoints.materialenApi}?relatienummer=${encodeURIComponent(normalizedRelNr)}`, {
+            cache: 'no-store'
+          })
+            .then((res) => {
+              if (!res.ok) {
+                throw new Error(`Materiaal API fout (status ${res.status})`);
+              }
+              return res.json();
+            })
+            .then((data) => {
+              const standaard = data?.standaard || [];
+              const logo = data?.logo || [];
+              const wissers = data?.wissers || [];
+              const toebehoren = data?.toebehoren || [];
+
+              setStandaardMattenData(cloneRecords(standaard));
+              setLogomattenData(cloneRecords(logo));
+              setWissersData(cloneRecords(wissers));
+              setToebehorenData(cloneRecords(toebehoren));
+              
+              // Genereer TODO's direct na laden
+              const inspectiePreview = {
+                relatienummer: normalizedRelNr,
+                klantnaam: naamVoorKey,
+                standaard_matten_data: standaard,
+                logomatten_data: logo,
+                wissers_data: wissers,
+                toebehoren_data: toebehoren,
+                matten_concurrenten: mattenConcurrenten,
+                wissers_concurrenten: wissersConcurrenten
+              };
+              
+              const analyse = analyseInspectie(inspectiePreview);
+              setTodoList(analyse.serviceTodos.map((text) => ({ text, done: false })));
+              setKlantenserviceTodoList(analyse.klantenserviceTodos.map((text) => ({ text, done: false })));
+              
+              setLoading(false);
+            })
+            .catch((error) => {
+              console.error('Materiaal API fout:', error);
+              setStandaardMattenData([]);
+              setLogomattenData([]);
+              setWissersData([]);
+              setToebehorenData([]);
+              setTodoList([]);
+              setKlantenserviceTodoList([]);
+              setLoading(false);
+            });
+        } else {
+          setStandaardMattenData([]);
+          setLogomattenData([]);
+          setWissersData([]);
+          setToebehorenData([]);
+          setTodoList([]);
+          setKlantenserviceTodoList([]);
+        }
+      } else if (materiaalCatalog.loaded) {
+        const standaard = materiaalCatalog.standaard[normalizedRelNr] || [];
+        const logo = materiaalCatalog.logo[normalizedRelNr] || [];
+        const wissers = materiaalCatalog.wissers[normalizedRelNr] || [];
+        const toebehoren = materiaalCatalog.toebehoren[normalizedRelNr] || [];
+
+        setStandaardMattenData(cloneRecords(standaard));
+        setLogomattenData(cloneRecords(logo));
+        setWissersData(cloneRecords(wissers));
+        setToebehorenData(cloneRecords(toebehoren));
+        
+        // Genereer TODO's voor CSV mode
+        const inspectiePreview = {
+          relatienummer: normalizedRelNr,
+          klantnaam: naamVoorKey,
+          standaard_matten_data: standaard,
+          logomatten_data: logo,
+          wissers_data: wissers,
+          toebehoren_data: toebehoren,
+          matten_concurrenten: mattenConcurrenten,
+          wissers_concurrenten: wissersConcurrenten
+        };
+        
+        const analyse = analyseInspectie(inspectiePreview);
+        setTodoList(analyse.serviceTodos.map((text) => ({ text, done: false })));
+        setKlantenserviceTodoList(analyse.klantenserviceTodos.map((text) => ({ text, done: false })));
+      } else {
+        setStandaardMattenData([]);
+        setLogomattenData([]);
+        setWissersData([]);
+        setToebehorenData([]);
+        setTodoList([]);
+        setKlantenserviceTodoList([]);
+      }
+    },
+    [
+      contactCatalog,
+      formatNaam,
+      materiaalCatalog,
+      setContactpersonen,
+      setFormData,
+      setLogomattenData,
+      setStandaardMattenData,
+      setToebehorenData,
+      setWissersData,
+      mattenConcurrenten,
+      wissersConcurrenten,
+      analyseInspectie,
+      setTodoList,
+      setKlantenserviceTodoList,
+      setLoading
+    ]
+  );
 
   const loadData = useCallback(async () => {
     await Promise.all([loadContactCatalog(), loadMateriaalCatalog()]);
