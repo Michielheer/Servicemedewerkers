@@ -1248,6 +1248,7 @@ function App() {
   };
 
   // Laad klanten bij mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const loadKlanten = async () => {
       const config = getDataConfig();
@@ -1277,7 +1278,6 @@ function App() {
     if (isLoggedIn && !klantenLoaded) {
       loadKlanten();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn]);
 
   const filteredKlanten = (klanten.length > 0 ? klanten : HARDCODED_CRM_KLANTEN).filter(klant => 
