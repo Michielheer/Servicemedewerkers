@@ -22,6 +22,12 @@ const generateEmailTemplate = (inspectieData) => {
     return d.toLocaleDateString('nl-NL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   };
 
+  const formatTijd = (tijdStr) => {
+    if (!tijdStr) return 'onbekend';
+    // Tijd is in formaat HH:MM:SS, we willen alleen HH:MM
+    return tijdStr.substring(0, 5);
+  };
+
   return `
 <!DOCTYPE html>
 <html lang="nl">
@@ -157,7 +163,7 @@ const generateEmailTemplate = (inspectieData) => {
     Hieronder vindt u een overzicht van onze bevindingen.</p>
     
     <div class="meta">
-      <p><strong>Datum:</strong> ${formatDatum(datum)} om ${tijd || 'onbekend'}</p>
+      <p><strong>Datum:</strong> ${formatDatum(datum)} om ${formatTijd(tijd)}</p>
       <p><strong>Inspecteur:</strong> ${inspecteur}</p>
     </div>
 
