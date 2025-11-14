@@ -59,9 +59,11 @@ Klik **OK**
 #### Variabele 5:
 ```
 Name:  FROM_EMAIL
-Value: michiel.heerkens@lavans.nl
+Value: receptie@lavans.nl
 ```
 Klik **OK**
+
+**Let op:** Gebruik receptie@lavans.nl voor professionele uitstraling
 
 #### Variabele 6:
 ```
