@@ -45,14 +45,22 @@ const generateEmailTemplate = (inspectieData) => {
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
     .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       border-bottom: 3px solid #007bff;
       padding-bottom: 15px;
       margin-bottom: 25px;
+    }
+    .header-logo {
+      max-height: 50px;
+      width: auto;
     }
     h1 {
       color: #007bff;
       margin: 0;
       font-size: 24px;
+      flex: 1;
     }
     .meta {
       background: #f8f9fa;
@@ -149,15 +157,16 @@ const generateEmailTemplate = (inspectieData) => {
     
     <div class="header">
       <h1>Service Inspectie Rapport</h1>
+      <img src="https://www.lavans.nl/wp-content/uploads/2021/03/Logo-Lavans-png.png" alt="Lavans" class="header-logo">
     </div>
     
     <p>Beste ${contactpersoon || 'relatie'},</p>
     
-    <p>We hebben vandaag een <strong>service-inspectie</strong> uitgevoerd bij ${klantnaam}. 
+    <p>We hebben een <strong>service-inspectie</strong> uitgevoerd bij ${klantnaam}. 
     Hieronder vindt u een overzicht van onze bevindingen.</p>
     
     <div class="meta">
-      <p><strong>Datum:</strong> ${formatDatum(datum)} om ${tijd || 'onbekend'}</p>
+      <p><strong>Datum:</strong> ${formatDatum(datum)}</p>
       <p><strong>Inspecteur:</strong> ${inspecteur}</p>
     </div>
 
