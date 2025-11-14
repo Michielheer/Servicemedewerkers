@@ -1878,22 +1878,21 @@ function App() {
                 className="header-logo"
               />
             </div>
-          </div>
-          <h1>Lavans Service App</h1>
-          <p>Ideaal Servicemoment</p>
         </div>
+        <h1>Lavans Service App</h1>
+      </div>
 
-        <div className="container">
-          {message && (
-            <div className={`alert alert-${messageType}`}>
-              {message}
-            </div>
-          )}
+      <div className="container">
+        {message && (
+          <div className={`alert alert-${messageType}`}>
+            {message}
+          </div>
+        )}
 
-          <LoginScreen
-            onLogin={handleLogin}
-            loading={loading}
-          />
+        <LoginScreen
+          onLogin={handleLogin}
+          loading={loading}
+        />
         </div>
       </div>
     );
@@ -1930,7 +1929,6 @@ function App() {
           )}
         </div>
         <h1>Lavans Service App</h1>
-        <p>Ideaal Servicemoment</p>
       </div>
 
       <div className="container">
