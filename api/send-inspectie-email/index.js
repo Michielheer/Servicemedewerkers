@@ -293,7 +293,12 @@ module.exports = async function (context, req) {
     if (!inspectieID) {
       context.res = {
         status: 400,
-        body: { error: 'InspectieID is verplicht.' }
+        headers: { 'Content-Type': 'application/json' },
+        body: { 
+          success: false,
+          error: 'InspectieID is verplicht.',
+          preview: false
+        }
       };
       return;
     }
@@ -320,7 +325,12 @@ module.exports = async function (context, req) {
     if (inspectieResult.recordset.length === 0) {
       context.res = {
         status: 404,
-        body: { error: 'Inspectie niet gevonden.' }
+        headers: { 'Content-Type': 'application/json' },
+        body: { 
+          success: false,
+          error: 'Inspectie niet gevonden.',
+          preview: false
+        }
       };
       return;
     }
@@ -352,7 +362,12 @@ module.exports = async function (context, req) {
     if (!recipientEmail) {
       context.res = {
         status: 400,
-        body: { error: 'Geen geldig email adres gevonden voor routecontact.' }
+        headers: { 'Content-Type': 'application/json' },
+        body: { 
+          success: false,
+          error: 'Geen geldig email adres gevonden voor routecontact.',
+          preview: false
+        }
       };
       return;
     }
@@ -460,6 +475,7 @@ module.exports = async function (context, req) {
 
     context.res = {
       status: 200,
+      headers: { 'Content-Type': 'application/json' },
       body: {
         success: emailResult.success,
         message: emailResult.success 
@@ -475,9 +491,12 @@ module.exports = async function (context, req) {
     context.log.error('Send Email API fout:', error);
     context.res = {
       status: 500,
+      headers: { 'Content-Type': 'application/json' },
       body: {
+        success: false,
         error: 'Email kon niet worden verzonden.',
-        details: error.message
+        details: error.message,
+        preview: false
       }
     };
   }
