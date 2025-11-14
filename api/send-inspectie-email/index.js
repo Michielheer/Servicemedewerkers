@@ -70,12 +70,6 @@ const generateEmailTemplate = (inspectieData) => {
     return d.toLocaleDateString('nl-NL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   };
 
-  const formatTijd = (tijdStr) => {
-    if (!tijdStr) return 'onbekend';
-    // Tijd is in formaat HH:MM:SS, we willen alleen HH:MM
-    return tijdStr.substring(0, 5);
-  };
-
   return `
 <!DOCTYPE html>
 <html lang="nl">
@@ -207,7 +201,7 @@ const generateEmailTemplate = (inspectieData) => {
     Hieronder vindt u een overzicht van onze bevindingen.</p>
     
     <div class="meta">
-      <p><strong>Datum:</strong> ${formatDatum(datum)} om ${formatTijd(tijd)}</p>
+      <p><strong>Datum:</strong> ${formatDatum(datum)} om ${tijd || 'onbekend'}</p>
       <p><strong>Inspecteur:</strong> ${inspecteur}</p>
     </div>
 
@@ -287,36 +281,13 @@ const generateEmailTemplate = (inspectieData) => {
 };
 
 module.exports = async function (context, req) {
-  context.log('Send email API aangeroepen');
-  
   try {
-    // Valideer request body
-    if (!req.body) {
-      context.log.error('Geen request body ontvangen');
-      context.res = {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-        body: { 
-          success: false,
-          error: 'Geen request body ontvangen',
-          preview: false
-        }
-      };
-      return;
-    }
-    
-    context.log('Request body:', JSON.stringify(req.body));
     const { inspectieID } = req.body;
 
     if (!inspectieID) {
       context.res = {
         status: 400,
-        headers: { 'Content-Type': 'application/json' },
-        body: { 
-          success: false,
-          error: 'InspectieID is verplicht.',
-          preview: false
-        }
+        body: { error: 'InspectieID is verplicht.' }
       };
       return;
     }
@@ -343,12 +314,7 @@ module.exports = async function (context, req) {
     if (inspectieResult.recordset.length === 0) {
       context.res = {
         status: 404,
-        headers: { 'Content-Type': 'application/json' },
-        body: { 
-          success: false,
-          error: 'Inspectie niet gevonden.',
-          preview: false
-        }
+        body: { error: 'Inspectie niet gevonden.' }
       };
       return;
     }
@@ -380,12 +346,7 @@ module.exports = async function (context, req) {
     if (!recipientEmail) {
       context.res = {
         status: 400,
-        headers: { 'Content-Type': 'application/json' },
-        body: { 
-          success: false,
-          error: 'Geen geldig email adres gevonden voor routecontact.',
-          preview: false
-        }
+        body: { error: 'Geen geldig email adres gevonden voor routecontact.' }
       };
       return;
     }
@@ -493,7 +454,6 @@ module.exports = async function (context, req) {
 
     context.res = {
       status: 200,
-      headers: { 'Content-Type': 'application/json' },
       body: {
         success: emailResult.success,
         message: emailResult.success 
@@ -507,27 +467,13 @@ module.exports = async function (context, req) {
 
   } catch (error) {
     context.log.error('Send Email API fout:', error);
-    context.log.error('Error stack:', error.stack);
-    
-    // Zorg ervoor dat we ALTIJD een response sturen
-    try {
-      context.res = {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-        body: {
-          success: false,
-          error: 'Email kon niet worden verzonden.',
-          details: error.message || String(error),
-          preview: false
-        }
-      };
-    } catch (finalError) {
-      context.log.error('Zelfs response schrijven faalt:', finalError);
-      context.res = {
-        status: 500,
-        body: 'Internal Server Error'
-      };
-    }
+    context.res = {
+      status: 500,
+      body: {
+        error: 'Email kon niet worden verzonden.',
+        details: error.message
+      }
+    };
   }
 };
 
