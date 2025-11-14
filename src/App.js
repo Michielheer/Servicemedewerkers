@@ -783,6 +783,14 @@ function App() {
     let toebehorenIssues = 0;
     let criticalIssues = 0;
 
+    // Check voor routecontact email (voor email functionaliteit)
+    const hasRouteContact = contactpersonen.some(c => c.routecontact && c.email && c.nog_in_dienst);
+    if (!hasRouteContact) {
+      klantenserviceTodos.push(
+        `⚠️ Geen routecontact met emailadres gevonden. Voeg een routecontact toe om inspectierapporten te kunnen emailen.`
+      );
+    }
+
     const matten = [
       ...(inspectieData.standaard_matten_data || []),
       ...(inspectieData.logomatten_data || []),
@@ -923,7 +931,7 @@ function App() {
         klantenPreview: klantenserviceTodos.slice(0, 2),
       },
     };
-  }, [berekenLeeftijd]);
+  }, [berekenLeeftijd, contactpersonen]);
 
   const hydrateKlantData = useCallback(
     (relatienummer, klantnaam, { fallbackContacts = [], updateContactFields = false } = {}) => {
