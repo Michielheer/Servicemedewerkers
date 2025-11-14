@@ -287,7 +287,25 @@ const generateEmailTemplate = (inspectieData) => {
 };
 
 module.exports = async function (context, req) {
+  context.log('Send email API aangeroepen');
+  
   try {
+    // Valideer request body
+    if (!req.body) {
+      context.log.error('Geen request body ontvangen');
+      context.res = {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+        body: { 
+          success: false,
+          error: 'Geen request body ontvangen',
+          preview: false
+        }
+      };
+      return;
+    }
+    
+    context.log('Request body:', JSON.stringify(req.body));
     const { inspectieID } = req.body;
 
     if (!inspectieID) {
@@ -489,16 +507,27 @@ module.exports = async function (context, req) {
 
   } catch (error) {
     context.log.error('Send Email API fout:', error);
-    context.res = {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-      body: {
-        success: false,
-        error: 'Email kon niet worden verzonden.',
-        details: error.message,
-        preview: false
-      }
-    };
+    context.log.error('Error stack:', error.stack);
+    
+    // Zorg ervoor dat we ALTIJD een response sturen
+    try {
+      context.res = {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+        body: {
+          success: false,
+          error: 'Email kon niet worden verzonden.',
+          details: error.message || String(error),
+          preview: false
+        }
+      };
+    } catch (finalError) {
+      context.log.error('Zelfs response schrijven faalt:', finalError);
+      context.res = {
+        status: 500,
+        body: 'Internal Server Error'
+      };
+    }
   }
 };
 
