@@ -996,39 +996,16 @@ function App() {
       if (config.mode === 'api') {
         if (normalizedRelNr) {
           setLoading(true); // Toon loading indicator
-          
-          // Parallel laden: contactpersonen EN materialen tegelijk
-          Promise.all([
-            fetch(`${config.endpoints.contactsApi}?relatienummer=${encodeURIComponent(normalizedRelNr)}`, {
-              cache: 'force-cache' // Cache voor snelheid
-            }).then(res => res.ok ? res.json() : []).catch(() => []),
-            
-            fetch(`${config.endpoints.materialenApi}?relatienummer=${encodeURIComponent(normalizedRelNr)}`, {
-              cache: 'force-cache' // Cache voor snelheid
-            }).then(res => res.ok ? res.json() : null).catch(() => null)
-          ])
-            .then(([contactsData, data]) => {
-              // Update contactpersonen als we data hebben
-              if (contactsData && contactsData.length > 0) {
-                // Converteer API format naar app format
-                const formattedContacts = contactsData.map(c => ({
-                  voornaam: c.Voornaam || '',
-                  tussenvoegsel: c.Tussenvoegsel || '',
-                  achternaam: c.Achternaam || '',
-                  email: c['E-mailadres'] || c.email || '',
-                  telefoon: c.Telefoonnummer || c.telefoon || '',
-                  functie: c.Functies || c.functie || '',
-                  routecontact: c.Routecontact === 'Ja' || c.routecontact === true,
-                  klantenportaal: c['Klantenportaal gebruikersnaam'] || c.klantenportaal || '',
-                  nog_in_dienst: c.Actief === 'Ja' || c.nog_in_dienst === true
-                }));
-                setContactpersonen(formattedContacts);
+          fetch(`${config.endpoints.materialenApi}?relatienummer=${encodeURIComponent(normalizedRelNr)}`, {
+            cache: 'no-store'
+          })
+            .then((res) => {
+              if (!res.ok) {
+                throw new Error(`Materiaal API fout (status ${res.status})`);
               }
-              
-              // Materialen verwerken
-              if (!data) {
-                throw new Error('Geen materiaal data');
-              }
+              return res.json();
+            })
+            .then((data) => {
               const standaard = data?.standaard || [];
               const logo = data?.logo || [];
               const wissers = data?.wissers || [];
