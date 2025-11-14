@@ -2277,7 +2277,9 @@ function App() {
                     
                     const result = await response.json();
                     
-                    if (response.ok && result.success) {
+                    console.log('Email API response:', { status: response.status, ok: response.ok, result });
+                    
+                    if (response.ok && result.success === true) {
                       setEmailDialog({
                         visible: true,
                         type: 'success',
@@ -2286,18 +2288,28 @@ function App() {
                           messageId: result.messageId
                         }
                       });
-                    } else if (result.preview) {
+                    } else if (response.ok && result.preview === true) {
                       setEmailDialog({
                         visible: true,
                         type: 'warning',
                         data: {}
                       });
-                    } else {
+                    } else if (!response.ok) {
+                      // API fout (500, 400, etc)
                       setEmailDialog({
                         visible: true,
                         type: 'error',
                         data: {
-                          error: result.error || 'Onbekende fout'
+                          error: result.error || result.details || `HTTP ${response.status}: ${response.statusText}`
+                        }
+                      });
+                    } else {
+                      // Onverwachte response
+                      setEmailDialog({
+                        visible: true,
+                        type: 'error',
+                        data: {
+                          error: `Onverwachte API response: ${JSON.stringify(result)}`
                         }
                       });
                     }
