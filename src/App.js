@@ -570,6 +570,8 @@ function App() {
   const materiaalLoadingRef = useRef(false);
   const messageTimerRef = useRef(null);
   const lastLoadedKlantRef = useRef(null); // Track laatst geladen klant
+  const abortControllerRef = useRef(null); // Voor afbreken van API calls
+  const requestIdRef = useRef(0); // Track API request versie
   const [completionOverlay, setCompletionOverlay] = useState({
     visible: false,
     logged: false,
@@ -956,6 +958,15 @@ function App() {
       
       console.log('[Hydrate] Laden klant:', klantKey);
       lastLoadedKlantRef.current = klantKey;
+      
+      // Abort vorige request indien actief
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      
+      // Nieuwe request ID voor race condition check
+      requestIdRef.current += 1;
+      const currentRequestId = requestIdRef.current;
 
       if (contactCatalog.loaded) {
         const contactsFromCatalog = resolveContactsFromCatalog(
@@ -1011,9 +1022,15 @@ function App() {
 
       if (config.mode === 'api') {
         if (normalizedRelNr) {
-          setLoading(true); // Toon loading indicator
+          setLoading(true);
+          
+          // Maak nieuwe AbortController voor deze request
+          const controller = new AbortController();
+          abortControllerRef.current = controller;
+          
           fetch(`${config.endpoints.materialenApi}?relatienummer=${encodeURIComponent(normalizedRelNr)}`, {
-            cache: 'no-store'
+            cache: 'no-store',
+            signal: controller.signal
           })
             .then((res) => {
               if (!res.ok) {
@@ -1022,11 +1039,18 @@ function App() {
               return res.json();
             })
             .then((data) => {
+              // Check of dit nog steeds de actieve request is
+              if (currentRequestId !== requestIdRef.current) {
+                console.log('[Hydrate] Request verouderd, skip state update');
+                return;
+              }
+              
               const standaard = data?.standaard || [];
               const logo = data?.logo || [];
               const wissers = data?.wissers || [];
               const toebehoren = data?.toebehoren || [];
 
+              // Gebruik functionele updates om race conditions te voorkomen
               setStandaardMattenData(cloneRecords(standaard));
               setLogomattenData(cloneRecords(logo));
               setWissersData(cloneRecords(wissers));
@@ -1051,6 +1075,17 @@ function App() {
               setLoading(false);
             })
             .catch((error) => {
+              // Negeer abort errors
+              if (error.name === 'AbortError') {
+                console.log('[Hydrate] Request geannuleerd');
+                return;
+              }
+              
+              // Check of dit nog steeds de actieve request is
+              if (currentRequestId !== requestIdRef.current) {
+                return;
+              }
+              
               console.error('Materiaal API fout:', error);
               setStandaardMattenData([]);
               setLogomattenData([]);
@@ -1164,19 +1199,32 @@ function App() {
     if (messageTimerRef.current) {
       clearTimeout(messageTimerRef.current);
     }
+    // Abort lopende API requests bij unmount
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
   }, []);
 
+  // Effect voor het synchroniseren van data wanneer catalogs geladen zijn
+  // LET OP: Dit effect triggert ALLEEN bij catalog load changes, niet bij formData changes
   useEffect(() => {
     if (!isAuthenticated) return;
-    if (!contactCatalog.loaded && !materiaalCatalog.loaded) return;
+    
+    // Wacht tot minstens één catalog geladen is
+    const anyCatalogLoaded = contactCatalog.loaded || materiaalCatalog.loaded;
+    if (!anyCatalogLoaded) return;
+    
+    // Alleen uitvoeren als er nog geen klant geladen is (initiele load)
+    if (lastLoadedKlantRef.current) {
+      console.log('[useEffect catalog] Skip - klant al geladen');
+      return;
+    }
 
     const activeRelatienummer = (selectedKlant?.relatienummer || formData.relatienummer || '').trim();
     const activeKlantnaam = selectedKlant?.klantnaam || formData.klantnaam || '';
     
-    // Check of deze klant al geladen is (voorkom dubbele call na handleKlantSelect)
-    const klantKey = `${normalizeRelatienummer(activeRelatienummer)}-${activeKlantnaam}`;
-    if (lastLoadedKlantRef.current === klantKey) {
-      console.log('[useEffect] Skip - klant al geladen via handleKlantSelect');
+    // Skip als geen klant geselecteerd
+    if (!activeRelatienummer && !activeKlantnaam) {
       return;
     }
     
@@ -1187,14 +1235,12 @@ function App() {
       fallbackContacts,
       updateContactFields: shouldUpdateContact
     });
+  // Alleen triggeren bij catalog load changes, niet bij elke formData change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     contactCatalog.loaded,
-    formData.klantnaam,
-    formData.relatienummer,
-    hydrateKlantData,
-    isAuthenticated,
     materiaalCatalog.loaded,
-    selectedKlant
+    isAuthenticated
   ]);
 
   useEffect(() => {
@@ -1246,9 +1292,14 @@ function App() {
   ]);
 
   // Klant selectie functies
-  const handleKlantSelect = (klant) => {
+  const handleKlantSelect = useCallback((klant) => {
     // Reset de lastLoaded ref zodat nieuwe klant WEL wordt geladen
     lastLoadedKlantRef.current = null;
+    
+    // Abort eventuele lopende requests
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
     
     const fallbackContacts = klant.contactpersonen || [];
     const contactsPreview = contactCatalog.loaded
@@ -1257,6 +1308,7 @@ function App() {
 
     const primary = getPrimaryContactForForm(contactsPreview, formatNaam);
 
+    // Update alle state in één batch voor consistentie
     setSelectedKlant(klant);
     setFormData(prev => ({
       ...prev,
@@ -1268,11 +1320,14 @@ function App() {
     setKlantSearchTerm(klant.klantnaam);
     setShowKlantDropdown(false);
 
-    hydrateKlantData(klant.relatienummer, klant.klantnaam, {
-      fallbackContacts,
-      updateContactFields: false
-    });
-  };
+    // Laad klantdata met kleine vertraging om state updates te laten settlen
+    setTimeout(() => {
+      hydrateKlantData(klant.relatienummer, klant.klantnaam, {
+        fallbackContacts,
+        updateContactFields: false
+      });
+    }, 10);
+  }, [contactCatalog, formatNaam, hydrateKlantData]);
 
   const handleLogin = async ({ email, password }) => {
     setLoading(true);
@@ -1343,20 +1398,26 @@ function App() {
     // Als er geen zoekterm is, toon niets
     if (!klantSearchTerm || klantSearchTerm.trim().length < 3) {
       setKlanten([]);
+      setKlantenLoading(false);
       return;
     }
 
     // Toon loading state tijdens typen
     setKlantenLoading(true);
-    setKlanten([]);
 
+    // AbortController voor deze zoek-request
+    const searchController = new AbortController();
+    
     // Debounce: wacht 400ms na laatste toetsaanslag
     const timeoutId = setTimeout(async () => {
       if (config.mode === 'api') {
         try {
           const response = await fetch(
             `${config.endpoints.klantenApi}?search=${encodeURIComponent(klantSearchTerm)}`,
-            { cache: 'no-store' }
+            { 
+              cache: 'no-store',
+              signal: searchController.signal
+            }
           );
           if (response.ok) {
             const data = await response.json();
@@ -1366,8 +1427,10 @@ function App() {
             setKlanten([]);
           }
         } catch (error) {
-          console.error('Fout bij zoeken klanten:', error);
-          setKlanten([]);
+          if (error.name !== 'AbortError') {
+            console.error('Fout bij zoeken klanten:', error);
+            setKlanten([]);
+          }
         } finally {
           setKlantenLoading(false);
         }
@@ -1378,7 +1441,10 @@ function App() {
       }
     }, 400);
 
-    return () => clearTimeout(timeoutId);
+    return () => {
+      clearTimeout(timeoutId);
+      searchController.abort();
+    };
   }, [isAuthenticated, klantSearchTerm]);
 
   // Geen extra filtering nodig - API doet dit al
