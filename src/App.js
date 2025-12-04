@@ -160,6 +160,14 @@ const AUTH_USERS = [
     role: 'Servicemedewerker',
     initials: 'TH',
     shortName: 'Tijn'
+  },
+  {
+    email: 'roberto.hendrikse@lavans.nl',
+    password: 'Winter2025!',
+    name: 'Roberto Hendrikse',
+    role: 'Servicemedewerker',
+    initials: 'RH',
+    shortName: 'Roberto'
   }
 ];
 
