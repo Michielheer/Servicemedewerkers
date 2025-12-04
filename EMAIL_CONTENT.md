@@ -86,7 +86,7 @@ Overzicht van contactpersoon mutaties:
 
 ### **Footer**
 - Lavans B.V. contactgegevens
-- 🌐 www.lavans.nl | ✉️ info@lavans.nl
+- 🌐 www.lavans.nl | ✉️ receptie@lavans.nl
 - Disclaimer: "Geautomatiseerd rapport op basis van service-inspectie"
 
 ---
@@ -225,7 +225,7 @@ Overzicht van contactpersoon mutaties:
 │ Lavans Service Team                         │
 │                                             │
 │ Lavans B.V.                                 │
-│ 🌐 www.lavans.nl | ✉️ info@lavans.nl       │
+│ 🌐 www.lavans.nl | ✉️ receptie@lavans.nl       │
 └─────────────────────────────────────────────┘
 ```
 

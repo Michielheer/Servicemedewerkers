@@ -313,7 +313,7 @@ const generateShortEmailTemplate = (inspectieData) => {
     <div class="footer">
       <p><strong>Lavans B.V.</strong></p>
       <p>🌐 <a href="https://www.lavans.nl" style="color: #007bff; text-decoration: none;">www.lavans.nl</a> | 
-         ✉️ <a href="mailto:info@lavans.nl" style="color: #007bff; text-decoration: none;">info@lavans.nl</a></p>
+         ✉️ <a href="mailto:receptie@lavans.nl" style="color: #007bff; text-decoration: none;">receptie@lavans.nl</a></p>
       <p style="font-size: 11px; margin-top: 15px; color: #999;">
         Dit is een geautomatiseerde notificatie van uw service bezoek.
       </p>
