@@ -398,6 +398,7 @@ const generateEmailTemplate = (inspectieData) => {
 module.exports = async function (context, req) {
   try {
     const inspectieID = parseInt(req.params.inspectieID);
+    const token = req.params.token || null;
 
     if (!inspectieID || isNaN(inspectieID)) {
       context.res = {
@@ -409,6 +410,62 @@ module.exports = async function (context, req) {
     }
 
     const pool = await getPool();
+
+    // Bepaal of token-validatie vereist is (tabel bestaat)
+    const tokenTableCheck = await pool.request().query(`
+      SELECT CASE WHEN OBJECT_ID('dbo.InspectieRapportTokens','U') IS NOT NULL THEN 1 ELSE 0 END AS HasTokenTable;
+    `);
+    const hasTokenTable = tokenTableCheck.recordset[0].HasTokenTable === 1;
+
+    if (hasTokenTable) {
+      if (!token) {
+        context.res = {
+          status: 400,
+          headers: { 'Content-Type': 'text/html' },
+          body: '<h1>Rapportlink ongeldig</h1><p>Deze rapportlink is onvolledig of verlopen. Vraag eventueel een nieuw rapport op.</p>'
+        };
+        return;
+      }
+
+      const tokenResult = await pool.request()
+        .input('inspectieID', sql.Int, inspectieID)
+        .input('token', sql.UniqueIdentifier, token)
+        .query(`
+          SELECT Token, GeldigTot, Used
+          FROM dbo.InspectieRapportTokens
+          WHERE InspectieID = @inspectieID
+            AND Token = @token
+        `);
+
+      if (tokenResult.recordset.length === 0) {
+        context.res = {
+          status: 404,
+          headers: { 'Content-Type': 'text/html' },
+          body: '<h1>Rapportlink ongeldig</h1><p>Deze rapportlink is ongeldig of verlopen. Vraag eventueel een nieuw rapport op.</p>'
+        };
+        return;
+      }
+
+      const tokenRow = tokenResult.recordset[0];
+      if (tokenRow.GeldigTot && new Date(tokenRow.GeldigTot) < new Date()) {
+        context.res = {
+          status: 410,
+          headers: { 'Content-Type': 'text/html' },
+          body: '<h1>Rapportlink verlopen</h1><p>Deze rapportlink is verlopen. Vraag eventueel een nieuw rapport op.</p>'
+        };
+        return;
+      }
+
+      // Markeer token optioneel als gebruikt (maar laat hergebruik technisch toe)
+      await pool.request()
+        .input('inspectieID', sql.Int, inspectieID)
+        .input('token', sql.UniqueIdentifier, token)
+        .query(`
+          UPDATE dbo.InspectieRapportTokens
+          SET Used = 1
+          WHERE InspectieID = @inspectieID AND Token = @token AND Used = 0;
+        `);
+    }
 
     // Haal inspectie op
     const inspectieResult = await pool.request()

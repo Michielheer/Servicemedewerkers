@@ -58,7 +58,8 @@ const generateShortEmailTemplate = (inspectieData) => {
     datum,
     standaardMatten,
     wissers,
-    problemen
+    problemen,
+    rapportUrl
   } = inspectieData;
 
   const formatDatum = (dateStr) => {
@@ -71,9 +72,14 @@ const generateShortEmailTemplate = (inspectieData) => {
     (standaardMatten?.verbetering || 0) +
     (wissers?.juist || 0) +
     (wissers?.verbetering || 0);
-  const aantalProblemen = (problemen && problemen.length > 0) ? problemen.reduce((sum, p) => sum + p.items.length, 0) : 0;
+  const aantalProblemen =
+    problemen && problemen.length > 0
+      ? problemen.reduce((sum, p) => sum + p.items.length, 0)
+      : 0;
 
-  const rapportUrl = `https://agreeable-bush-0adda8c03.3.azurestaticapps.net/rapport/${inspectieID}`;
+  const url =
+    rapportUrl ||
+    `https://agreeable-bush-0adda8c03.3.azurestaticapps.net/rapport/${inspectieID}`;
 
   // Eenvoudige helper voor samenvattende tabel
   const renderActivityRow = (label, data) => {
@@ -286,13 +292,13 @@ const generateShortEmailTemplate = (inspectieData) => {
       Wilt u het volledige servicerapport met alle details bekijken?
     </p>
     
-    <a href="${rapportUrl}" class="cta-button">
+    <a href="${url}" class="cta-button">
       Volledig rapport bekijken
     </a>
     
     <p style="font-size: 13px; color: #999; margin-top: 15px;">
       Of kopieer deze link: <br>
-      <a href="${rapportUrl}" style="color: #007bff; word-break: break-all;">${rapportUrl}</a>
+      <a href="${url}" style="color: #007bff; word-break: break-all;">${url}</a>
     </p>
     
     <div class="signature">
@@ -571,6 +577,38 @@ module.exports = async function (context, req) {
       console.log('Portal users info niet gevonden:', err.message);
     }
 
+    // Genereer beveiligde rapport-URL met optionele token
+    let rapportUrl;
+    try {
+      const tableCheck = await pool.request().query(`
+        SELECT CASE WHEN OBJECT_ID('dbo.InspectieRapportTokens','U') IS NOT NULL THEN 1 ELSE 0 END AS HasTokenTable;
+      `);
+      const hasTokenTable = tableCheck.recordset[0].HasTokenTable === 1;
+
+      if (hasTokenTable) {
+        const tokenResult = await pool.request()
+          .input('inspectieID', sql.Int, inspectieID)
+          .query(`
+            DECLARE @token UNIQUEIDENTIFIER = NEWID();
+            INSERT INTO dbo.InspectieRapportTokens (InspectieID, Token, GeldigTot, Used)
+            VALUES (@inspectieID, @token, DATEADD(DAY, 30, SYSUTCDATETIME()), 0);
+            SELECT @token AS Token;
+          `);
+
+        if (tokenResult.recordset.length > 0 && tokenResult.recordset[0].Token) {
+          const token = tokenResult.recordset[0].Token;
+          rapportUrl = \`https://agreeable-bush-0adda8c03.3.azurestaticapps.net/rapport/\${inspectieID}/\${token}\`;
+        }
+      }
+    } catch (err) {
+      console.log('Rapport token kon niet worden aangemaakt:', err.message);
+    }
+
+    if (!rapportUrl) {
+      // Fallback zonder token als tabel nog niet bestaat
+      rapportUrl = \`https://agreeable-bush-0adda8c03.3.azurestaticapps.net/rapport/\${inspectieID}\`;
+    }
+
     // Genereer email
     const emailData = {
       inspectieID: inspectie.InspectieID,
@@ -589,7 +627,8 @@ module.exports = async function (context, req) {
       problemen,
       algemeenOpmerkingen,
       contactpersonenWijzigingen: contactpersonenWijzigingen,
-      portalUsers: portalUsers
+      portalUsers: portalUsers,
+      rapportUrl
     };
 
     // Kies template op basis van type
@@ -628,7 +667,7 @@ module.exports = async function (context, req) {
           : 'Email preview gegenereerd (SMTP niet geconfigureerd)',
         recipient: recipientEmail,
         emailType: emailType,
-        rapportUrl: emailType === 'short' ? `https://agreeable-bush-0adda8c03.3.azurestaticapps.net/rapport/${inspectieID}` : null,
+        rapportUrl: emailType === 'short' ? rapportUrl : null,
         preview: emailResult.preview || false,
         messageId: emailResult.messageId || null
       }
