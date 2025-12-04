@@ -1,6 +1,6 @@
 const { getPool, sql } = require('../shared/db');
 
-// Hergebruik de email template functie (aangepaste versie voor preview)
+// Professionele rapport template voor publieke webpagina
 const generateEmailTemplate = (inspectieData) => {
   const {
     inspectieID,
@@ -27,16 +27,25 @@ const generateEmailTemplate = (inspectieData) => {
     return d.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   };
 
+  const formatKorteDatum = (dateStr) => {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
   // Helper functie voor activiteitentabel
-  const renderActivityRow = (label, juist, verbetering) => {
-    const juistVal = juist !== undefined && juist !== null ? juist : 'n.v.t';
-    const verbeteringVal = verbetering !== undefined && verbetering !== null ? verbetering : 'n.v.t';
+  const renderActivityRow = (label, icon, juist, verbetering) => {
+    const juistVal = juist !== undefined && juist !== null ? juist : '-';
+    const verbeteringVal = verbetering !== undefined && verbetering !== null ? verbetering : '-';
+    const hasIssue = verbetering && verbetering > 0;
     
     return `
-      <tr>
-        <td style="padding: 12px; border-bottom: 1px solid #e9ecef;">${label}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e9ecef; text-align: center; font-weight: bold; color: #28a745;">${juistVal}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e9ecef; text-align: center; font-weight: bold; color: #ffc107;">${verbeteringVal}</td>
+      <tr class="activity-row ${hasIssue ? 'has-issue' : ''}">
+        <td class="activity-name">
+          <span class="activity-icon">${icon}</span>
+          ${label}
+        </td>
+        <td class="activity-value good">${juistVal}</td>
+        <td class="activity-value ${hasIssue ? 'warning' : ''}">${verbeteringVal}</td>
       </tr>
     `;
   };
@@ -47,348 +56,907 @@ const generateEmailTemplate = (inspectieData) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Service Rapport #${inspectieID} - ${klantnaam} | Lavans</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --primary: #0052CC;
+      --primary-dark: #003d99;
+      --primary-light: #e6f0ff;
+      --success: #0d7a3e;
+      --success-bg: #e8f5ee;
+      --warning: #b35c00;
+      --warning-bg: #fff4e6;
+      --text-primary: #1a1a2e;
+      --text-secondary: #5c5c7a;
+      --text-muted: #8a8aa3;
+      --border: #e2e8f0;
+      --bg-subtle: #f8fafc;
+      --white: #ffffff;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+      --shadow-lg: 0 12px 40px rgba(0,0,0,0.12);
+      --radius-sm: 6px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       line-height: 1.6;
-      color: #333;
-      max-width: 700px;
+      color: var(--text-primary);
+      background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .page-container {
+      max-width: 800px;
       margin: 0 auto;
-      padding: 20px;
-      background-color: #f4f4f4;
     }
-    .email-container {
-      background: white;
-      border-radius: 8px;
-      padding: 35px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+
+    /* Hero Header */
+    .hero-header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      padding: 48px 40px;
+      color: var(--white);
+      position: relative;
+      overflow: hidden;
     }
-    .header {
+
+    .hero-header::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -20%;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+
+    .hero-header::after {
+      content: '';
+      position: absolute;
+      bottom: -30%;
+      left: -10%;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(10px);
+      padding: 8px 16px;
+      border-radius: 100px;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 20px;
+      letter-spacing: 0.5px;
+    }
+
+    .hero-title {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+
+    .hero-subtitle {
+      font-size: 16px;
+      opacity: 0.9;
+      font-weight: 400;
+    }
+
+    .hero-meta {
+      display: flex;
+      gap: 24px;
+      margin-top: 28px;
+      padding-top: 24px;
+      border-top: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .hero-meta-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .hero-meta-label {
+      font-size: 12px;
+      opacity: 0.7;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .hero-meta-value {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    /* Main Content */
+    .main-content {
+      background: var(--white);
+      border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .content-body {
+      padding: 40px;
+    }
+
+    /* Greeting */
+    .greeting {
+      font-size: 18px;
+      color: var(--text-primary);
+      margin-bottom: 24px;
+    }
+
+    .greeting strong {
+      color: var(--primary);
+    }
+
+    /* Intro Card */
+    .intro-card {
+      background: var(--bg-subtle);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      margin-bottom: 32px;
+      border: 1px solid var(--border);
+    }
+
+    .intro-card p {
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+
+    .intro-card ul {
+      margin: 0;
+      padding-left: 20px;
+      color: var(--text-secondary);
+    }
+
+    .intro-card li {
+      margin: 8px 0;
+    }
+
+    /* Section */
+    .section {
+      margin-bottom: 36px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .section-icon {
+      width: 36px;
+      height: 36px;
+      background: var(--primary-light);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .section-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.3px;
+    }
+
+    /* Activity Table */
+    .activity-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border);
+    }
+
+    .activity-table thead {
+      background: var(--bg-subtle);
+    }
+
+    .activity-table th {
+      padding: 14px 20px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .activity-table th:not(:first-child) {
+      text-align: center;
+    }
+
+    .activity-row {
+      transition: background-color 0.2s;
+    }
+
+    .activity-row:hover {
+      background: var(--bg-subtle);
+    }
+
+    .activity-row.has-issue {
+      background: var(--warning-bg);
+    }
+
+    .activity-row.has-issue:hover {
+      background: #ffedd5;
+    }
+
+    .activity-name {
+      padding: 16px 20px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .activity-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--primary-light);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .activity-value {
+      padding: 16px 20px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 15px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .activity-value.good {
+      color: var(--success);
+    }
+
+    .activity-value.warning {
+      color: var(--warning);
+    }
+
+    /* Status Cards */
+    .status-card {
+      border-radius: var(--radius-md);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .status-card.success {
+      background: var(--success-bg);
+      border: 1px solid #b7e4c7;
+    }
+
+    .status-card.warning {
+      background: var(--warning-bg);
+      border: 1px solid #fed7aa;
+    }
+
+    .status-card.info {
+      background: var(--primary-light);
+      border: 1px solid #bfdbfe;
+    }
+
+    .status-card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .status-card-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .status-card.success .status-card-icon {
+      background: var(--success);
+      color: white;
+    }
+
+    .status-card.warning .status-card-icon {
+      background: var(--warning);
+      color: white;
+    }
+
+    .status-card.info .status-card-icon {
+      background: var(--primary);
+      color: white;
+    }
+
+    .status-card-title {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .status-card.success .status-card-title {
+      color: var(--success);
+    }
+
+    .status-card.warning .status-card-title {
+      color: var(--warning);
+    }
+
+    .status-card.info .status-card-title {
+      color: var(--primary);
+    }
+
+    .status-card-content {
+      color: var(--text-secondary);
+      font-size: 15px;
+    }
+
+    .status-card-content ul {
+      margin: 12px 0 0 0;
+      padding-left: 20px;
+    }
+
+    .status-card-content li {
+      margin: 8px 0;
+    }
+
+    /* Check List */
+    .check-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .check-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .check-list li:last-child {
+      border-bottom: none;
+    }
+
+    .check-icon {
+      width: 24px;
+      height: 24px;
+      background: var(--success);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 12px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .check-text strong {
+      color: var(--text-primary);
+    }
+
+    .check-text span {
+      color: var(--text-secondary);
+    }
+
+    /* Portal Table */
+    .portal-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      margin-top: 20px;
+      font-size: 14px;
+    }
+
+    .portal-table th {
+      background: rgba(0,82,204,0.1);
+      padding: 12px 16px;
+      text-align: left;
+      font-weight: 600;
+      color: var(--primary);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .portal-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .status-badge.active {
+      background: var(--success-bg);
+      color: var(--success);
+    }
+
+    .status-badge.inactive {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+
+    /* Footer */
+    .report-footer {
+      margin-top: 40px;
+      padding-top: 32px;
+      border-top: 2px solid var(--border);
+    }
+
+    .footer-signature {
+      margin-bottom: 32px;
+    }
+
+    .footer-signature p {
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+    }
+
+    .signature-name {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .signature-role {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    .footer-brand {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      border-bottom: 3px solid #007bff;
-      padding-bottom: 15px;
-      margin-bottom: 25px;
+      padding: 24px;
+      background: var(--bg-subtle);
+      border-radius: var(--radius-md);
     }
-    .header-logo {
-      max-height: 50px;
+
+    .footer-logo img {
+      height: 40px;
       width: auto;
     }
-    h1 {
-      color: #007bff;
-      margin: 0;
-      font-size: 24px;
-      flex: 1;
+
+    .footer-contact {
+      text-align: right;
     }
-    .intro-section {
-      background: #f8f9fa;
-      padding: 20px;
-      border-radius: 6px;
-      margin: 20px 0;
-      border-left: 4px solid #007bff;
-    }
-    .section {
-      margin: 30px 0;
-    }
-    .section h2 {
-      color: #495057;
-      font-size: 20px;
-      border-bottom: 2px solid #007bff;
-      padding-bottom: 8px;
-      margin-bottom: 15px;
-    }
-    .meta-box {
-      background: #e7f3ff;
-      padding: 15px 20px;
-      border-radius: 6px;
-      margin: 15px 0;
-    }
-    .meta-box p {
-      margin: 8px 0;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 15px 0;
-      background: white;
-      border: 1px solid #dee2e6;
-    }
-    th {
-      background: #007bff;
-      color: white;
-      padding: 12px;
-      text-align: left;
-      font-weight: 600;
-    }
-    td {
-      padding: 12px;
-      border-bottom: 1px solid #e9ecef;
-    }
-    .info-box {
-      background: #fff3cd;
-      border-left: 4px solid #ffc107;
-      padding: 15px 20px;
-      border-radius: 4px;
-      margin: 15px 0;
-    }
-    .info-box h3 {
-      margin-top: 0;
-      color: #856404;
-      font-size: 16px;
-    }
-    .info-box ul {
-      margin: 10px 0;
-      padding-left: 20px;
-    }
-    .info-box li {
-      margin: 8px 0;
-    }
-    .success-box {
-      background: #d4edda;
-      border-left: 4px solid #28a745;
-      padding: 15px 20px;
-      border-radius: 4px;
-      margin: 15px 0;
-    }
-    .tip-box {
-      background: #d1ecf1;
-      border-left: 4px solid #17a2b8;
-      padding: 20px;
-      border-radius: 4px;
-      margin: 20px 0;
-    }
-    .tip-box h3 {
-      margin-top: 0;
-      color: #0c5460;
-      font-size: 18px;
-    }
-    .portal-table {
-      margin-top: 15px;
-      font-size: 14px;
-    }
-    .feedback-section {
-      text-align: center;
-      margin: 30px 0;
-      padding: 25px;
-      background: #f8f9fa;
-      border-radius: 6px;
-    }
-    .feedback-section h3 {
-      color: #495057;
-      margin-bottom: 15px;
-    }
-    .emoji-buttons {
-      font-size: 32px;
-      display: flex;
-      justify-content: center;
-      gap: 20px;
-      margin-top: 15px;
-    }
-    .emoji-link {
+
+    .footer-contact a {
+      color: var(--primary);
       text-decoration: none;
-      transition: transform 0.2s;
-      display: inline-block;
+      font-weight: 500;
+      transition: color 0.2s;
     }
-    .emoji-link:hover {
-      transform: scale(1.2);
+
+    .footer-contact a:hover {
+      color: var(--primary-dark);
     }
-    .footer {
-      margin-top: 30px;
-      padding-top: 20px;
-      border-top: 2px solid #e9ecef;
-      font-size: 13px;
-      color: #6c757d;
+
+    .footer-disclaimer {
       text-align: center;
+      margin-top: 24px;
+      font-size: 12px;
+      color: var(--text-muted);
     }
-    .public-header {
-      background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-      color: white;
-      padding: 20px;
-      text-align: center;
-      border-radius: 8px 8px 0 0;
-      margin: -35px -35px 25px -35px;
+
+    /* Animations */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
-    .public-header h2 {
-      margin: 0;
-      color: white;
-      border: none;
-      padding: 0;
+
+    .section {
+      animation: fadeInUp 0.5s ease-out forwards;
+    }
+
+    .section:nth-child(1) { animation-delay: 0.1s; }
+    .section:nth-child(2) { animation-delay: 0.2s; }
+    .section:nth-child(3) { animation-delay: 0.3s; }
+    .section:nth-child(4) { animation-delay: 0.4s; }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      body {
+        padding: 16px;
+      }
+
+      .hero-header {
+        padding: 32px 24px;
+      }
+
+      .hero-title {
+        font-size: 24px;
+      }
+
+      .hero-meta {
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .content-body {
+        padding: 24px;
+      }
+
+      .activity-table th,
+      .activity-name,
+      .activity-value {
+        padding: 12px;
+      }
+
+      .activity-icon {
+        display: none;
+      }
+
+      .footer-brand {
+        flex-direction: column;
+        gap: 16px;
+        text-align: center;
+      }
+
+      .footer-contact {
+        text-align: center;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="email-container">
-    <div class="public-header">
-      <h2>📋 Service Rapport #${inspectieID}</h2>
-      <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.9;">Gepubliceerd op ${formatDatum(datum)}</p>
-    </div>
-    
-    <div class="header">
-      <h1>Service Rapport</h1>
-      <img src="https://www.lavans.nl/wp-content/uploads/2021/03/Logo-Lavans-png.png" alt="Lavans" class="header-logo">
-    </div>
-    
-    <p>Beste ${contactpersoon || 'relatie'},</p>
-    
-    <div class="intro-section">
-      <p style="margin: 0 0 10px 0;">We hebben een <strong>service moment</strong> gedaan bij ${klantnaam}.</p>
-      <p style="margin: 5px 0;">Hierin checken we of:</p>
-      <ul style="margin: 10px 0; padding-left: 20px;">
-        <li>Alles goed staat en ons systeem overeenkomt met de werkelijkheid</li>
-        <li>Of we nog verbeteringen zien die we kunnen doorgeven</li>
-      </ul>
-    </div>
-
-    <div class="section">
-      <h2>📋 Wat hebben we gedaan?</h2>
-      <div class="meta-box">
-        <p><strong>Datum:</strong> ${formatDatum(datum)}</p>
-        <p><strong>Inspecteur:</strong> ${inspecteur}</p>
-        <p><strong>Gesproken met:</strong> ${contactpersoon || 'meerdere contactpersonen'}</p>
+  <div class="page-container">
+    <!-- Hero Header -->
+    <header class="hero-header">
+      <div class="hero-content">
+        <div class="hero-badge">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 12l2 2 4-4"/>
+            <circle cx="12" cy="12" r="10"/>
+          </svg>
+          Service Rapport #${inspectieID}
+        </div>
+        <h1 class="hero-title">${klantnaam}</h1>
+        <p class="hero-subtitle">${formatDatum(datum)}</p>
+        
+        <div class="hero-meta">
+          <div class="hero-meta-item">
+            <span class="hero-meta-label">Inspecteur</span>
+            <span class="hero-meta-value">${inspecteur}</span>
+          </div>
+          <div class="hero-meta-item">
+            <span class="hero-meta-label">Gesproken met</span>
+            <span class="hero-meta-value">${contactpersoon || 'Meerdere contactpersonen'}</span>
+          </div>
+          <div class="hero-meta-item">
+            <span class="hero-meta-label">Rapportdatum</span>
+            <span class="hero-meta-value">${formatKorteDatum(datum)}</span>
+          </div>
+        </div>
       </div>
-    </div>
+    </header>
 
-    <div class="section">
-      <h2>Samenvattend</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Activiteit</th>
-            <th style="text-align: center;">✅ Juist</th>
-            <th style="text-align: center;">⚠️ Verbetering mogelijk</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${renderActivityRow('Matten', standaardMatten?.juist, standaardMatten?.verbetering)}
-          ${renderActivityRow('Wissers', wissers?.juist, wissers?.verbetering)}
-          ${renderActivityRow('Sanitair', sanitair?.juist, sanitair?.verbetering)}
-          ${renderActivityRow('Poetsdoeken', poetsdoeken?.juist, poetsdoeken?.verbetering)}
-          ${renderActivityRow('Bedrijfskleding', bedrijfskleding?.juist, bedrijfskleding?.verbetering)}
-          ${renderActivityRow('Contactpersonen', contactpersonenWijzigingen?.juist, contactpersonenWijzigingen?.verbetering)}
-        </tbody>
-      </table>
-    </div>
-
-    <div class="section">
-      <h3 style="color: #28a745; font-size: 16px;">✅ De zaken die we gecontroleerd hebben en juist zijn:</h3>
-      <ul style="line-height: 1.8;">
-        <li><strong>Ligplaats juist</strong> - Producten staan waar ze horen</li>
-        <li><strong>Bezoekritme juist</strong> - Wisselfrequentie komt overeen</li>
-        <li><strong>Producten in goede staat</strong> - Geen beschadigingen of vervuiling</li>
-        <li><strong>We kunnen jullie bereiken</strong> - Contactgegevens zijn actueel</li>
-      </ul>
-    </div>
-
-    ${problemen && problemen.length > 0 ? `
-    <div class="section">
-      <h2>⚠️ Wat is ons opgevallen?</h2>
-      <p>Er konden zaken ook beter, dit is ons opgevallen:</p>
-      
-      ${problemen.map(p => `
-        <div class="info-box">
-          <h3>${p.categorie}</h3>
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="content-body">
+        
+        <p class="greeting">Beste <strong>${contactpersoon || 'relatie'}</strong>,</p>
+        
+        <div class="intro-card">
+          <p>We hebben een <strong>service moment</strong> uitgevoerd bij ${klantnaam}. Hierbij controleren we of:</p>
           <ul>
-            ${p.items.map(item => `<li>${item}</li>`).join('')}
+            <li>Alles goed staat en ons systeem overeenkomt met de werkelijkheid</li>
+            <li>Er verbeteringen zijn die we kunnen doorvoeren</li>
           </ul>
         </div>
-      `).join('')}
-    </div>
-    ` : `
-    <div class="success-box">
-      <p style="margin: 0;"><strong>🎉 Alles ziet er uitstekend uit!</strong></p>
-      <p style="margin: 10px 0 0 0;">We hebben geen verbeterpunten geconstateerd. Alles loopt perfect!</p>
-    </div>
-    `}
 
-    ${contactpersonenWijzigingen && contactpersonenWijzigingen.wijzigingen && contactpersonenWijzigingen.wijzigingen.length > 0 ? `
-    <div class="section">
-      <h2>👥 Contactgegevens</h2>
-      <div style="background: #f8f9fa; padding: 20px; border-radius: 6px; border-left: 4px solid #007bff;">
-        ${contactpersonenWijzigingen.wijzigingen.map(w => `
-          <p style="margin: 10px 0;">
-            <strong>${w.type}:</strong> ${w.beschrijving}
+        <!-- Samenvatting -->
+        <div class="section">
+          <div class="section-header">
+            <div class="section-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+                <rect x="9" y="3" width="6" height="4" rx="2"/>
+                <path d="M9 12h6M9 16h6"/>
+              </svg>
+            </div>
+            <h2 class="section-title">Samenvatting</h2>
+          </div>
+          
+          <table class="activity-table">
+            <thead>
+              <tr>
+                <th>Activiteit</th>
+                <th>In orde</th>
+                <th>Aandacht nodig</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${renderActivityRow('Matten', '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>', standaardMatten?.juist, standaardMatten?.verbetering)}
+              ${renderActivityRow('Wissers', '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/></svg>', wissers?.juist, wissers?.verbetering)}
+              ${renderActivityRow('Sanitair', '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>', sanitair?.juist, sanitair?.verbetering)}
+              ${renderActivityRow('Poetsdoeken', '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>', poetsdoeken?.juist, poetsdoeken?.verbetering)}
+              ${renderActivityRow('Bedrijfskleding', '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.38 3.46L16 2 12 4 8 2 3.62 3.46a2 2 0 00-1.34 2.23l.58 3.47c.06.37.32.67.67.8L8 12V21a1 1 0 001 1h6a1 1 0 001-1V12l4.47-2.04c.35-.13.61-.43.67-.8l.58-3.47a2 2 0 00-1.34-2.23z"/></svg>', bedrijfskleding?.juist, bedrijfskleding?.verbetering)}
+              ${renderActivityRow('Contactpersonen', '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>', contactpersonenWijzigingen?.juist, contactpersonenWijzigingen?.verbetering)}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Wat ging goed -->
+        <div class="section">
+          <div class="section-header">
+            <div class="section-icon" style="background: var(--success-bg);">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+                <path d="M22 4L12 14.01l-3-3"/>
+              </svg>
+            </div>
+            <h2 class="section-title">Wat hebben we gecontroleerd</h2>
+          </div>
+          
+          <ul class="check-list">
+            <li>
+              <span class="check-icon">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                  <path d="M20 6L9 17l-5-5"/>
+                </svg>
+              </span>
+              <span class="check-text">
+                <strong>Ligplaats juist</strong> — <span>Producten staan waar ze horen</span>
+              </span>
+            </li>
+            <li>
+              <span class="check-icon">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                  <path d="M20 6L9 17l-5-5"/>
+                </svg>
+              </span>
+              <span class="check-text">
+                <strong>Bezoekritme juist</strong> — <span>Wisselfrequentie komt overeen</span>
+              </span>
+            </li>
+            <li>
+              <span class="check-icon">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                  <path d="M20 6L9 17l-5-5"/>
+                </svg>
+              </span>
+              <span class="check-text">
+                <strong>Producten in goede staat</strong> — <span>Geen beschadigingen of vervuiling</span>
+              </span>
+            </li>
+            <li>
+              <span class="check-icon">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                  <path d="M20 6L9 17l-5-5"/>
+                </svg>
+              </span>
+              <span class="check-text">
+                <strong>Bereikbaarheid</strong> — <span>Contactgegevens zijn actueel</span>
+              </span>
+            </li>
+          </ul>
+        </div>
+
+        ${problemen && problemen.length > 0 ? `
+        <!-- Aandachtspunten -->
+        <div class="section">
+          <div class="section-header">
+            <div class="section-icon" style="background: var(--warning-bg);">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+            </div>
+            <h2 class="section-title">Aandachtspunten</h2>
+          </div>
+          
+          ${problemen.map(p => `
+          <div class="status-card warning">
+            <div class="status-card-header">
+              <div class="status-card-icon">!</div>
+              <h3 class="status-card-title">${p.categorie.replace(/[^\w\s]/g, '').trim()}</h3>
+            </div>
+            <div class="status-card-content">
+              <ul>
+                ${p.items.map(item => `<li>${item}</li>`).join('')}
+              </ul>
+            </div>
+          </div>
+          `).join('')}
+        </div>
+        ` : `
+        <div class="status-card success">
+          <div class="status-card-header">
+            <div class="status-card-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 6L9 17l-5-5"/>
+              </svg>
+            </div>
+            <h3 class="status-card-title">Alles ziet er uitstekend uit!</h3>
+          </div>
+          <div class="status-card-content">
+            <p>We hebben geen verbeterpunten geconstateerd. Alles loopt perfect!</p>
+          </div>
+        </div>
+        `}
+
+        ${contactpersonenWijzigingen && contactpersonenWijzigingen.wijzigingen && contactpersonenWijzigingen.wijzigingen.length > 0 ? `
+        <!-- Contactgegevens -->
+        <div class="section">
+          <div class="section-header">
+            <div class="section-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+              </svg>
+            </div>
+            <h2 class="section-title">Wijzigingen Contactgegevens</h2>
+          </div>
+          
+          <div class="status-card info">
+            <div class="status-card-content">
+              ${contactpersonenWijzigingen.wijzigingen.map(w => `
+                <p style="margin: 12px 0;">
+                  <strong>${w.type.replace(/[^\w\s]/g, '').trim()}:</strong> ${w.beschrijving}
+                </p>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+        ` : ''}
+
+        ${portalUsers && portalUsers.length > 0 ? `
+        <!-- Klantenportaal -->
+        <div class="section">
+          <div class="section-header">
+            <div class="section-icon" style="background: var(--primary-light);">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <path d="M9 9h6v6H9z"/>
+              </svg>
+            </div>
+            <h2 class="section-title">Klantenportaal</h2>
+          </div>
+          
+          <div class="status-card info">
+            <div class="status-card-content">
+              <p>In het klantenportaal kunt u zelf wijzigingen doorvoeren en abonnementen beheren.</p>
+              
+              <table class="portal-table">
+                <thead>
+                  <tr>
+                    <th>Naam</th>
+                    <th>Status</th>
+                    <th>Laatste login</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${portalUsers.map(user => `
+                    <tr>
+                      <td>${user.naam}</td>
+                      <td>
+                        <span class="status-badge ${user.hasAccess ? 'active' : 'inactive'}">
+                          ${user.hasAccess ? 'Actief' : 'Geen toegang'}
+                        </span>
+                      </td>
+                      <td>${user.lastLogin || 'Nooit'}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+              
+              <p style="margin-top: 16px; font-size: 14px; color: var(--text-muted);">
+                Wilt u toegang aanvragen of uw wachtwoord resetten? Neem contact met ons op.
+              </p>
+            </div>
+          </div>
+        </div>
+        ` : ''}
+
+        ${algemeenOpmerkingen && Object.keys(algemeenOpmerkingen).length > 0 ? `
+        <!-- Opmerkingen -->
+        <div class="section">
+          <div class="section-header">
+            <div class="section-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+              </svg>
+            </div>
+            <h2 class="section-title">Opmerkingen</h2>
+          </div>
+          
+          <div class="intro-card">
+            ${Object.entries(algemeenOpmerkingen)
+              .filter(([key, value]) => value && value.trim())
+              .map(([key, value]) => `
+                <p style="margin: 12px 0;">
+                  <strong>${key.replace(/_/g, ' ')}:</strong><br>
+                  ${value}
+                </p>
+              `).join('')}
+          </div>
+        </div>
+        ` : ''}
+
+        <!-- Footer -->
+        <footer class="report-footer">
+          <div class="footer-signature">
+            <p>Heeft u vragen over dit rapport of wilt u een wijziging doorgeven? Neem dan gerust contact met ons op.</p>
+            <p style="margin-top: 24px;">Met vriendelijke groet,</p>
+            <p class="signature-name">${inspecteur}</p>
+            <p class="signature-role">Lavans Service Team</p>
+          </div>
+          
+          <div class="footer-brand">
+            <div class="footer-logo">
+              <img src="https://www.lavans.nl/wp-content/uploads/2021/03/Logo-Lavans-png.png" alt="Lavans">
+            </div>
+            <div class="footer-contact">
+              <p><a href="https://www.lavans.nl">www.lavans.nl</a></p>
+              <p><a href="mailto:receptie@lavans.nl">receptie@lavans.nl</a></p>
+            </div>
+          </div>
+          
+          <p class="footer-disclaimer">
+            Dit is een geautomatiseerd rapport op basis van onze service-inspectie.
           </p>
-        `).join('')}
+        </footer>
+
       </div>
-    </div>
-    ` : ''}
-
-    ${portalUsers && portalUsers.length > 0 ? `
-    <div class="tip-box">
-      <h3>💡 Pro tip: Klantenportaal</h3>
-      <p>We zien dat niet iedereen toegang heeft tot het klantenportaal, of al lang niet meer heeft ingelogd. 
-      In het klantenportaal kan je zelf wijzigingen doorvoeren en abonnementen beheren.</p>
-      
-      <table class="portal-table">
-        <thead>
-          <tr>
-            <th>Naam</th>
-            <th style="text-align: center;">Status</th>
-            <th style="text-align: center;">Laatste inlogpoging</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${portalUsers.map(user => `
-            <tr>
-              <td>${user.naam}</td>
-              <td style="text-align: center;">
-                ${user.hasAccess ? '✅ Toegang' : '❌ Geen toegang'}
-              </td>
-              <td style="text-align: center;">${user.lastLogin || 'Nooit'}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-      
-      <p style="margin-top: 15px; font-size: 14px;">
-        <em>Wil je toegang aanvragen of je wachtwoord resetten? Neem contact met ons op!</em>
-      </p>
-    </div>
-    ` : ''}
-
-    ${algemeenOpmerkingen && Object.keys(algemeenOpmerkingen).length > 0 ? `
-    <div class="section">
-      <h2>📝 Algemene Opmerkingen</h2>
-      <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; border-left: 4px solid #6c757d;">
-        ${Object.entries(algemeenOpmerkingen)
-          .filter(([key, value]) => value && value.trim())
-          .map(([key, value]) => `
-            <p style="margin: 10px 0;">
-              <strong>${key.replace(/_/g, ' ')}:</strong><br>
-              ${value}
-            </p>
-          `).join('')}
-      </div>
-    </div>
-    ` : ''}
-
-    <div class="feedback-section">
-      <h3>Help ons verbeteren!</h3>
-      <p>Wat vond je van deze mail?</p>
-      <div class="emoji-buttons">
-        <a href="mailto:feedback@lavans.nl?subject=Feedback Service Rapport - Zeer tevreden&body=Inspectie ID: ${inspectieID}%0D%0A%0D%0AIk ben zeer tevreden!" class="emoji-link" title="Zeer tevreden">😍</a>
-        <a href="mailto:feedback@lavans.nl?subject=Feedback Service Rapport - Tevreden&body=Inspectie ID: ${inspectieID}%0D%0A%0D%0AIk ben tevreden!" class="emoji-link" title="Tevreden">🙂</a>
-        <a href="mailto:feedback@lavans.nl?subject=Feedback Service Rapport - Neutraal&body=Inspectie ID: ${inspectieID}%0D%0A%0D%0AIk sta neutraal." class="emoji-link" title="Neutraal">😐</a>
-        <a href="mailto:feedback@lavans.nl?subject=Feedback Service Rapport - Ontevreden&body=Inspectie ID: ${inspectieID}%0D%0A%0D%0AIk ben ontevreden omdat..." class="emoji-link" title="Ontevreden">🙁</a>
-      </div>
-    </div>
-
-    <div class="section">
-      <p>Heeft u vragen over dit rapport of wilt u een wijziging doorgeven? Neem dan gerust contact met ons op.</p>
-      <p style="margin-top: 20px;">Met vriendelijke groet,<br>
-      <strong style="font-size: 16px;">${inspecteur}</strong><br>
-      <span style="color: #6c757d;">Lavans Service Team</span></p>
-    </div>
-
-    <div class="footer">
-      <p><strong>Lavans B.V.</strong></p>
-      <p>🌐 <a href="https://www.lavans.nl" style="color: #007bff; text-decoration: none;">www.lavans.nl</a> | 
-         ✉️ <a href="mailto:receptie@lavans.nl" style="color: #007bff; text-decoration: none;">receptie@lavans.nl</a></p>
-      <p style="font-size: 11px; margin-top: 15px; color: #999;">
-        Dit is een geautomatiseerd rapport op basis van onze service-inspectie.
-      </p>
-    </div>
+    </main>
   </div>
 </body>
 </html>
