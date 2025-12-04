@@ -86,6 +86,11 @@ Value: michiel@datametrics.nl
 ```
 Klik **OK**
 
+**💡 Tip:** Voor meerdere ontvangers gebruik komma:
+```
+Value: michiel.heerkens@lavans.nl,tijn.heerkens@lavans.nl
+```
+
 ### 5. Opslaan
 - Klik bovenaan op **"Save"**
 - Klik **"Continue"** bij de waarschuwing
