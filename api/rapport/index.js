@@ -448,8 +448,6 @@ module.exports = async function (context, req) {
           (SELECT COUNT(*) FROM dbo.InspectieStandaardMatten WHERE InspectieID = @id AND (Aanwezig = 0 OR SchoonOnbeschadigd = 0 OR Vuilgraad IN ('Sterk vervuild', 'Licht vervuild'))) AS mattenVerbetering,
           (SELECT COUNT(*) FROM dbo.InspectieLogomatten WHERE InspectieID = @id) AS logomatten,
           (SELECT COUNT(*) FROM dbo.InspectieWissers WHERE InspectieID = @id) AS totaalWissers,
-          (SELECT COUNT(*) FROM dbo.InspectieWissers WHERE InspectieID = @id AND VervangActie IS NULL OR VervangActie = '') AS wissersJuist,
-          (SELECT COUNT(*) FROM dbo.InspectieWissers WHERE InspectieID = @id AND VervangActie IS NOT NULL AND VervangActie <> '') AS wissersVerbetering,
           (SELECT COUNT(*) FROM dbo.InspectieToebehoren WHERE InspectieID = @id) AS toebehoren
       `);
 
@@ -462,8 +460,8 @@ module.exports = async function (context, req) {
     };
 
     const wissers = {
-      juist: counts.wissersJuist || 0,
-      verbetering: counts.wissersVerbetering || 0
+      juist: counts.totaalWissers || 0,
+      verbetering: 0
     };
 
     // Haal problemen op en groepeer per categorie
@@ -496,20 +494,6 @@ module.exports = async function (context, req) {
           AND (Aanwezig = 0 OR SchoonOnbeschadigd = 0 OR Vuilgraad IN ('Sterk vervuild', 'Licht vervuild'))
       `);
 
-    const problemenWissersResult = await pool.request()
-      .input('id', sql.Int, inspectieID)
-      .query(`
-        SELECT 
-          CASE 
-            WHEN VervangActie LIKE '%bijna op%' THEN 'De wissers waren (bijna) op toen we kwamen wisselen. Overweeg een uitbreiding van het abonnement zodat je zeker niet mispakt.'
-            WHEN VervangActie IS NOT NULL THEN 'De [' + Type + '] waren kapot/niet aanwezig. Deze zijn besteld of vervangen.'
-          END AS Probleem
-        FROM dbo.InspectieWissers
-        WHERE InspectieID = @id
-          AND VervangActie IS NOT NULL 
-          AND VervangActie <> ''
-      `);
-
     const problemen = [];
     
     const mattenProblemen = problemenMattenResult.recordset.map(r => r.Probleem).filter(p => p);
@@ -517,14 +501,6 @@ module.exports = async function (context, req) {
       problemen.push({
         categorie: '🧹 Matten',
         items: mattenProblemen
-      });
-    }
-
-    const wissersProblemen = problemenWissersResult.recordset.map(r => r.Probleem).filter(p => p);
-    if (wissersProblemen.length > 0) {
-      problemen.push({
-        categorie: '🧻 Wissers',
-        items: wissersProblemen
       });
     }
 
