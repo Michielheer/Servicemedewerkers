@@ -55,7 +55,7 @@ Je hebt nu **2 manieren** om klanten te informeren over een service bezoek!
 
 Wanneer klant op de knop klikt:
 ```
-https://agreeable-bush-0adda8c03.3.azurestaticapps.net/rapport/{inspectieID}
+https://agreeable-bush-0adda8c03.3.azurestaticapps.net/api/rapport/{inspectieID}
 ```
 
 **Krijgt te zien:**
@@ -219,7 +219,7 @@ curl -X POST https://agreeable-bush-0adda8c03.3.azurestaticapps.net/api/send-ins
 ### Stap 3: Test Rapport Pagina
 Open in browser:
 ```
-https://agreeable-bush-0adda8c03.3.azurestaticapps.net/rapport/123
+https://agreeable-bush-0adda8c03.3.azurestaticapps.net/api/rapport/123
 ```
 
 ### Stap 4: Test Volledige Email

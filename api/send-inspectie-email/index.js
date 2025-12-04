@@ -79,7 +79,7 @@ const generateShortEmailTemplate = (inspectieData) => {
 
   const url =
     rapportUrl ||
-    `https://agreeable-bush-0adda8c03.3.azurestaticapps.net/rapport/${inspectieID}`;
+    `https://agreeable-bush-0adda8c03.3.azurestaticapps.net/api/rapport/${inspectieID}`;
 
   // Eenvoudige helper voor samenvattende tabel
   const renderActivityRow = (label, data) => {
@@ -597,7 +597,7 @@ module.exports = async function (context, req) {
 
         if (tokenResult.recordset.length > 0 && tokenResult.recordset[0].Token) {
           const token = tokenResult.recordset[0].Token;
-          rapportUrl = `https://agreeable-bush-0adda8c03.3.azurestaticapps.net/rapport/${inspectieID}/${token}`;
+          rapportUrl = `https://agreeable-bush-0adda8c03.3.azurestaticapps.net/api/rapport/${inspectieID}/${token}`;
         }
       }
     } catch (err) {
@@ -606,7 +606,7 @@ module.exports = async function (context, req) {
 
     if (!rapportUrl) {
       // Fallback zonder token als tabel nog niet bestaat
-      rapportUrl = `https://agreeable-bush-0adda8c03.3.azurestaticapps.net/rapport/${inspectieID}`;
+      rapportUrl = `https://agreeable-bush-0adda8c03.3.azurestaticapps.net/api/rapport/${inspectieID}`;
     }
 
     // Genereer email

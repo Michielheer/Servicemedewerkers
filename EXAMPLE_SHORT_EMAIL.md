@@ -61,7 +61,7 @@
 
 ### URL:
 ```
-https://agreeable-bush-0adda8c03.3.azurestaticapps.net/rapport/123
+https://agreeable-bush-0adda8c03.3.azurestaticapps.net/api/rapport/123
 ```
 
 ### Je komt op een webpagina met:
@@ -215,7 +215,7 @@ https://agreeable-bush-0adda8c03.3.azurestaticapps.net/rapport/123
 ## 🔗 URL Structuur
 
 ```
-https://agreeable-bush-0adda8c03.3.azurestaticapps.net/rapport/123
+https://agreeable-bush-0adda8c03.3.azurestaticapps.net/api/rapport/123
                                                         ↑       ↑
                                                         │       │
                                                     endpoint  InspectieID
