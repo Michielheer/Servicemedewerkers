@@ -5,7 +5,7 @@ WITH klanten AS (
   SELECT TOP 1000
     rel_norm = UPPER(REPLACE(REPLACE(ISNULL(d.Relatienummer, ''), ' ', ''), '[', '')),
     klantnaam = MAX(ISNULL(d.Naam, ''))
-  FROM dbo.DatamodelExcel1 d WITH (NOLOCK)
+  FROM dbo.DatamodelExcel3 d WITH (NOLOCK)
   WHERE d.Relatienummer IS NOT NULL 
     AND d.Relatienummer <> ''
     AND (@rel IS NULL OR UPPER(REPLACE(REPLACE(d.Relatienummer, ' ', ''), '[', '')) = @rel)
