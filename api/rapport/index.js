@@ -221,7 +221,7 @@ const generateEmailTemplate = (inspectieData) => {
   <div class="email-container">
     <div class="public-header">
       <h2>📋 Service Rapport #${inspectieID}</h2>
-      <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.9;">Gepubliceerd op ${formatDatum(inspectie.InspectieDatum)}</p>
+      <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.9;">Gepubliceerd op ${formatDatum(datum)}</p>
     </div>
     
     <div class="header">
