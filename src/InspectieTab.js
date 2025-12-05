@@ -294,25 +294,109 @@ const InspectieTab = ({
             />
           )}
           <label>Aantal matten van concurrent:</label>
-          <input
-            type="number"
-            className="form-control"
-            min="0"
-            value={mattenConcurrenten.aantal_concurrent}
-            onChange={(e) => setMattenConcurrenten({...mattenConcurrenten, aantal_concurrent: parseInt(e.target.value) || 0})}
-          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px' }}>
+            <button
+              type="button"
+              onClick={() => setMattenConcurrenten({...mattenConcurrenten, aantal_concurrent: Math.max(0, (mattenConcurrenten.aantal_concurrent || 0) - 1)})}
+              style={{
+                width: '44px',
+                height: '44px',
+                fontSize: '24px',
+                fontWeight: 'bold',
+                border: '2px solid #dc3545',
+                borderRadius: '8px',
+                backgroundColor: '#fff',
+                color: '#dc3545',
+                cursor: 'pointer'
+              }}
+            >
+              −
+            </button>
+            <input
+              type="number"
+              className="form-control"
+              min="0"
+              value={mattenConcurrenten.aantal_concurrent}
+              onChange={(e) => setMattenConcurrenten({...mattenConcurrenten, aantal_concurrent: parseInt(e.target.value) || 0})}
+              style={{
+                width: '80px',
+                textAlign: 'center',
+                fontSize: '18px',
+                fontWeight: 'bold'
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => setMattenConcurrenten({...mattenConcurrenten, aantal_concurrent: (mattenConcurrenten.aantal_concurrent || 0) + 1})}
+              style={{
+                width: '44px',
+                height: '44px',
+                fontSize: '24px',
+                fontWeight: 'bold',
+                border: '2px solid #28a745',
+                borderRadius: '8px',
+                backgroundColor: '#fff',
+                color: '#28a745',
+                cursor: 'pointer'
+              }}
+            >
+              +
+            </button>
+          </div>
         </div>
       )}
 
       <div className="form-group">
         <label>Aantal koop matten:</label>
-        <input
-          type="number"
-          className="form-control"
-          min="0"
-          value={mattenConcurrenten.aantal_koop}
-          onChange={(e) => setMattenConcurrenten({...mattenConcurrenten, aantal_koop: parseInt(e.target.value) || 0})}
-        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            type="button"
+            onClick={() => setMattenConcurrenten({...mattenConcurrenten, aantal_koop: Math.max(0, (mattenConcurrenten.aantal_koop || 0) - 1)})}
+            style={{
+              width: '44px',
+              height: '44px',
+              fontSize: '24px',
+              fontWeight: 'bold',
+              border: '2px solid #dc3545',
+              borderRadius: '8px',
+              backgroundColor: '#fff',
+              color: '#dc3545',
+              cursor: 'pointer'
+            }}
+          >
+            −
+          </button>
+          <input
+            type="number"
+            className="form-control"
+            min="0"
+            value={mattenConcurrenten.aantal_koop}
+            onChange={(e) => setMattenConcurrenten({...mattenConcurrenten, aantal_koop: parseInt(e.target.value) || 0})}
+            style={{
+              width: '80px',
+              textAlign: 'center',
+              fontSize: '18px',
+              fontWeight: 'bold'
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => setMattenConcurrenten({...mattenConcurrenten, aantal_koop: (mattenConcurrenten.aantal_koop || 0) + 1})}
+            style={{
+              width: '44px',
+              height: '44px',
+              fontSize: '24px',
+              fontWeight: 'bold',
+              border: '2px solid #28a745',
+              borderRadius: '8px',
+              backgroundColor: '#fff',
+              color: '#28a745',
+              cursor: 'pointer'
+            }}
+          >
+            +
+          </button>
+        </div>
       </div>
 
       {/* Standaard matten sectie - alleen tonen als er data is */}
