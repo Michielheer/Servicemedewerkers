@@ -97,11 +97,11 @@ module.exports = async function (context, req) {
         
         // TIJDELIJK: Fallback tot database is geconfigureerd
         // TODO: Verwijder deze fallback zodra AppGebruikers tabel bestaat
-        if (!storedPwd && process.env.AUTH_SETUP_MODE === 'true') {
+        if (!storedPwd) {
           const tempPasswords = {
-            'michiel.heerkens@lavans.nl': process.env.TEMP_PWD_M,
-            'tijn.heerkens@lavans.nl': process.env.TEMP_PWD_T,
-            'roberto.hendrikse@lavans.nl': process.env.TEMP_PWD_R
+            'michiel.heerkens@lavans.nl': 'Herfst2025!',
+            'tijn.heerkens@lavans.nl': 'Herfst2025!',
+            'roberto.hendrikse@lavans.nl': 'Winter2025!'
           };
           storedPwd = tempPasswords[normalizedEmail];
         }
