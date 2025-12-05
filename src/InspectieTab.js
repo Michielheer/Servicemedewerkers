@@ -297,49 +297,22 @@ const InspectieTab = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
             <button
               type="button"
+              className="aantal-btn aantal-btn-minus"
               onClick={() => setMattenConcurrenten({...mattenConcurrenten, aantal_concurrent: Math.max(0, (mattenConcurrenten.aantal_concurrent || 0) - 1)})}
-              style={{
-                width: '36px',
-                height: '36px',
-                fontSize: '18px',
-                fontWeight: 'bold',
-                border: '1px solid #dc3545',
-                borderRadius: '6px',
-                backgroundColor: '#fff',
-                color: '#dc3545',
-                cursor: 'pointer'
-              }}
             >
               −
             </button>
             <input
               type="number"
-              className="form-control"
+              className="aantal-input"
               min="0"
               value={mattenConcurrenten.aantal_concurrent}
               onChange={(e) => setMattenConcurrenten({...mattenConcurrenten, aantal_concurrent: parseInt(e.target.value) || 0})}
-              style={{
-                width: '60px',
-                textAlign: 'center',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                padding: '6px'
-              }}
             />
             <button
               type="button"
+              className="aantal-btn aantal-btn-plus"
               onClick={() => setMattenConcurrenten({...mattenConcurrenten, aantal_concurrent: (mattenConcurrenten.aantal_concurrent || 0) + 1})}
-              style={{
-                width: '36px',
-                height: '36px',
-                fontSize: '18px',
-                fontWeight: 'bold',
-                border: '1px solid #28a745',
-                borderRadius: '6px',
-                backgroundColor: '#fff',
-                color: '#28a745',
-                cursor: 'pointer'
-              }}
             >
               +
             </button>
@@ -352,49 +325,22 @@ const InspectieTab = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button
             type="button"
+            className="aantal-btn aantal-btn-minus"
             onClick={() => setMattenConcurrenten({...mattenConcurrenten, aantal_koop: Math.max(0, (mattenConcurrenten.aantal_koop || 0) - 1)})}
-            style={{
-              width: '36px',
-              height: '36px',
-              fontSize: '18px',
-              fontWeight: 'bold',
-              border: '1px solid #dc3545',
-              borderRadius: '6px',
-              backgroundColor: '#fff',
-              color: '#dc3545',
-              cursor: 'pointer'
-            }}
           >
             −
           </button>
           <input
             type="number"
-            className="form-control"
+            className="aantal-input"
             min="0"
             value={mattenConcurrenten.aantal_koop}
             onChange={(e) => setMattenConcurrenten({...mattenConcurrenten, aantal_koop: parseInt(e.target.value) || 0})}
-            style={{
-              width: '60px',
-              textAlign: 'center',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              padding: '6px'
-            }}
           />
           <button
             type="button"
+            className="aantal-btn aantal-btn-plus"
             onClick={() => setMattenConcurrenten({...mattenConcurrenten, aantal_koop: (mattenConcurrenten.aantal_koop || 0) + 1})}
-            style={{
-              width: '36px',
-              height: '36px',
-              fontSize: '18px',
-              fontWeight: 'bold',
-              border: '1px solid #28a745',
-              borderRadius: '6px',
-              backgroundColor: '#fff',
-              color: '#28a745',
-              cursor: 'pointer'
-            }}
           >
             +
           </button>
@@ -706,52 +652,25 @@ const InspectieTab = ({
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <button
                           type="button"
+                          className="aantal-btn aantal-btn-minus"
                           onClick={() => updateWisserData(index, 'aantal_geteld', Math.max(0, (wisser.aantal_geteld || 0) - 1))}
-                          style={{
-                            width: '32px',
-                            height: '32px',
-                            fontSize: '16px',
-                            fontWeight: 'bold',
-                            border: '1px solid #dc3545',
-                            borderRadius: '6px',
-                            backgroundColor: '#fff',
-                            color: '#dc3545',
-                            cursor: 'pointer'
-                          }}
                         >
                           −
                         </button>
                         <input
                           type="number"
-                          className="form-control"
+                          className="aantal-input"
                           min="0"
                           value={wisser.aantal_geteld || ''}
                           onChange={(e) => {
                             const val = e.target.value === '' ? 0 : parseInt(e.target.value);
                             updateWisserData(index, 'aantal_geteld', val);
                           }}
-                          style={{
-                            width: '50px',
-                            textAlign: 'center',
-                            fontSize: '14px',
-                            fontWeight: 'bold',
-                            padding: '4px'
-                          }}
                         />
                         <button
                           type="button"
+                          className="aantal-btn aantal-btn-plus"
                           onClick={() => updateWisserData(index, 'aantal_geteld', (wisser.aantal_geteld || 0) + 1)}
-                          style={{
-                            width: '32px',
-                            height: '32px',
-                            fontSize: '16px',
-                            fontWeight: 'bold',
-                            border: '1px solid #28a745',
-                            borderRadius: '6px',
-                            backgroundColor: '#fff',
-                            color: '#28a745',
-                            cursor: 'pointer'
-                          }}
                         >
                           +
                         </button>
@@ -761,52 +680,25 @@ const InspectieTab = ({
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <button
                           type="button"
+                          className="aantal-btn aantal-btn-minus"
                           onClick={() => updateWisserData(index, 'waarvan_gebruikt', Math.max(0, (wisser.waarvan_gebruikt || 0) - 1))}
-                          style={{
-                            width: '32px',
-                            height: '32px',
-                            fontSize: '16px',
-                            fontWeight: 'bold',
-                            border: '1px solid #dc3545',
-                            borderRadius: '6px',
-                            backgroundColor: '#fff',
-                            color: '#dc3545',
-                            cursor: 'pointer'
-                          }}
                         >
                           −
                         </button>
                         <input
                           type="number"
-                          className="form-control"
+                          className="aantal-input"
                           min="0"
                           value={wisser.waarvan_gebruikt || ''}
                           onChange={(e) => {
                             const val = e.target.value === '' ? 0 : parseInt(e.target.value);
                             updateWisserData(index, 'waarvan_gebruikt', val);
                           }}
-                          style={{
-                            width: '50px',
-                            textAlign: 'center',
-                            fontSize: '14px',
-                            fontWeight: 'bold',
-                            padding: '4px'
-                          }}
                         />
                         <button
                           type="button"
+                          className="aantal-btn aantal-btn-plus"
                           onClick={() => updateWisserData(index, 'waarvan_gebruikt', (wisser.waarvan_gebruikt || 0) + 1)}
-                          style={{
-                            width: '32px',
-                            height: '32px',
-                            fontSize: '16px',
-                            fontWeight: 'bold',
-                            border: '1px solid #28a745',
-                            borderRadius: '6px',
-                            backgroundColor: '#fff',
-                            color: '#28a745',
-                            cursor: 'pointer'
-                          }}
                         >
                           +
                         </button>

@@ -192,6 +192,73 @@
   }
 }
 
+/* Plus/min knoppen voor mobiel */
+.aantal-btn {
+  min-width: 36px;
+  min-height: 36px;
+  font-size: 18px;
+  font-weight: bold;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s, background-color 0.1s;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.aantal-btn:active {
+  transform: scale(0.95);
+}
+
+.aantal-btn-minus {
+  border: 1px solid #dc3545;
+  background-color: #fff;
+  color: #dc3545;
+}
+
+.aantal-btn-minus:active {
+  background-color: #dc3545;
+  color: #fff;
+}
+
+.aantal-btn-plus {
+  border: 1px solid #28a745;
+  background-color: #fff;
+  color: #28a745;
+}
+
+.aantal-btn-plus:active {
+  background-color: #28a745;
+  color: #fff;
+}
+
+.aantal-input {
+  width: 50px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: bold;
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* Grotere touch targets op mobiel */
+@media (max-width: 768px) {
+  .aantal-btn {
+    min-width: 44px;
+    min-height: 44px;
+    font-size: 20px;
+  }
+  
+  .aantal-input {
+    width: 55px;
+    font-size: 18px;
+    padding: 8px;
+  }
+}
+
 @media (max-width: 768px) {
   .form-row {
     flex-direction: column;
