@@ -703,29 +703,116 @@ const InspectieTab = ({
                   <tr key={index}>
                     <td>{wisser.artikel}</td>
                     <td>
-                      <input
-                        type="number"
-                        className="form-control"
-                        min="0"
-                        value={wisser.aantal_geteld || ''}
-                        onChange={(e) => {
-                          const val = e.target.value === '' ? 0 : parseInt(e.target.value);
-                          updateWisserData(index, 'aantal_geteld', val);
-                        }}
-                      />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <button
+                          type="button"
+                          onClick={() => updateWisserData(index, 'aantal_geteld', Math.max(0, (wisser.aantal_geteld || 0) - 1))}
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            fontSize: '16px',
+                            fontWeight: 'bold',
+                            border: '1px solid #dc3545',
+                            borderRadius: '6px',
+                            backgroundColor: '#fff',
+                            color: '#dc3545',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          −
+                        </button>
+                        <input
+                          type="number"
+                          className="form-control"
+                          min="0"
+                          value={wisser.aantal_geteld || ''}
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? 0 : parseInt(e.target.value);
+                            updateWisserData(index, 'aantal_geteld', val);
+                          }}
+                          style={{
+                            width: '50px',
+                            textAlign: 'center',
+                            fontSize: '14px',
+                            fontWeight: 'bold',
+                            padding: '4px'
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => updateWisserData(index, 'aantal_geteld', (wisser.aantal_geteld || 0) + 1)}
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            fontSize: '16px',
+                            fontWeight: 'bold',
+                            border: '1px solid #28a745',
+                            borderRadius: '6px',
+                            backgroundColor: '#fff',
+                            color: '#28a745',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          +
+                        </button>
+                      </div>
                     </td>
                     <td>
-                      <input
-                        type="number"
-                        className="form-control"
-                        min="0"
-                        value={wisser.waarvan_gebruikt || ''}
-                        onChange={(e) => {
-                          const val = e.target.value === '' ? 0 : parseInt(e.target.value);
-                          updateWisserData(index, 'waarvan_gebruikt', val);
-                        }}
-                      />
-                    </td>                  </tr>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <button
+                          type="button"
+                          onClick={() => updateWisserData(index, 'waarvan_gebruikt', Math.max(0, (wisser.waarvan_gebruikt || 0) - 1))}
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            fontSize: '16px',
+                            fontWeight: 'bold',
+                            border: '1px solid #dc3545',
+                            borderRadius: '6px',
+                            backgroundColor: '#fff',
+                            color: '#dc3545',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          −
+                        </button>
+                        <input
+                          type="number"
+                          className="form-control"
+                          min="0"
+                          value={wisser.waarvan_gebruikt || ''}
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? 0 : parseInt(e.target.value);
+                            updateWisserData(index, 'waarvan_gebruikt', val);
+                          }}
+                          style={{
+                            width: '50px',
+                            textAlign: 'center',
+                            fontSize: '14px',
+                            fontWeight: 'bold',
+                            padding: '4px'
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => updateWisserData(index, 'waarvan_gebruikt', (wisser.waarvan_gebruikt || 0) + 1)}
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            fontSize: '16px',
+                            fontWeight: 'bold',
+                            border: '1px solid #28a745',
+                            borderRadius: '6px',
+                            backgroundColor: '#fff',
+                            color: '#28a745',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
                 ))}
               </tbody>
             </table>
