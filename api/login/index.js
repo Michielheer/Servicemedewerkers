@@ -1,6 +1,6 @@
 /**
- * Login API - Veilige authenticatie via backend
- * Wachtwoorden worden opgehaald uit Azure Environment Variables
+ * Login API - Authenticatie via backend
+ * Wachtwoorden uit Azure env vars, met fallback voor ontwikkeling
  */
 
 module.exports = async function (context, req) {
@@ -23,13 +23,11 @@ module.exports = async function (context, req) {
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    // Gebruikers configuratie uit environment variables
-    // Format: AUTH_USERS = JSON array met users (zonder wachtwoorden)
-    // Wachtwoorden staan in aparte env vars: AUTH_PWD_MICHIEL, AUTH_PWD_TIJN, etc.
+    // Gebruikers met wachtwoorden uit env vars OF fallback
     const users = [
       {
         email: 'michiel.heerkens@lavans.nl',
-        passwordEnvKey: 'AUTH_PWD_MICHIEL',
+        password: process.env.AUTH_PWD_MICHIEL || 'Herfst2025!',
         name: 'Michiel Heerkens',
         role: 'Service Manager',
         initials: 'MH',
@@ -37,7 +35,7 @@ module.exports = async function (context, req) {
       },
       {
         email: 'tijn.heerkens@lavans.nl',
-        passwordEnvKey: 'AUTH_PWD_TIJN',
+        password: process.env.AUTH_PWD_TIJN || 'Herfst2025!',
         name: 'Tijn Heerkens',
         role: 'Servicemedewerker',
         initials: 'TH',
@@ -45,7 +43,7 @@ module.exports = async function (context, req) {
       },
       {
         email: 'roberto.hendrikse@lavans.nl',
-        passwordEnvKey: 'AUTH_PWD_ROBERTO',
+        password: process.env.AUTH_PWD_ROBERTO || 'Winter2025!',
         name: 'Roberto Hendrikse',
         role: 'Servicemedewerker',
         initials: 'RH',
@@ -69,24 +67,8 @@ module.exports = async function (context, req) {
       return;
     }
 
-    // Haal wachtwoord uit environment variable
-    const storedPassword = process.env[user.passwordEnvKey];
-
-    if (!storedPassword) {
-      context.log(`Login fout: wachtwoord env var niet geconfigureerd voor ${user.email}`);
-      context.res = {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          success: false, 
-          error: 'Server configuratie fout. Neem contact op met beheer.' 
-        })
-      };
-      return;
-    }
-
     // Vergelijk wachtwoord
-    if (password !== storedPassword) {
+    if (password !== user.password) {
       context.log(`Login mislukt: verkeerd wachtwoord voor ${normalizedEmail}`);
       context.res = {
         status: 401,
