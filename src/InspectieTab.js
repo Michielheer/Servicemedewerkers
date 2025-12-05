@@ -294,17 +294,17 @@ const InspectieTab = ({
             />
           )}
           <label>Aantal matten van concurrent:</label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
             <button
               type="button"
               onClick={() => setMattenConcurrenten({...mattenConcurrenten, aantal_concurrent: Math.max(0, (mattenConcurrenten.aantal_concurrent || 0) - 1)})}
               style={{
-                width: '44px',
-                height: '44px',
-                fontSize: '24px',
+                width: '36px',
+                height: '36px',
+                fontSize: '18px',
                 fontWeight: 'bold',
-                border: '2px solid #dc3545',
-                borderRadius: '8px',
+                border: '1px solid #dc3545',
+                borderRadius: '6px',
                 backgroundColor: '#fff',
                 color: '#dc3545',
                 cursor: 'pointer'
@@ -319,22 +319,23 @@ const InspectieTab = ({
               value={mattenConcurrenten.aantal_concurrent}
               onChange={(e) => setMattenConcurrenten({...mattenConcurrenten, aantal_concurrent: parseInt(e.target.value) || 0})}
               style={{
-                width: '80px',
+                width: '60px',
                 textAlign: 'center',
-                fontSize: '18px',
-                fontWeight: 'bold'
+                fontSize: '16px',
+                fontWeight: 'bold',
+                padding: '6px'
               }}
             />
             <button
               type="button"
               onClick={() => setMattenConcurrenten({...mattenConcurrenten, aantal_concurrent: (mattenConcurrenten.aantal_concurrent || 0) + 1})}
               style={{
-                width: '44px',
-                height: '44px',
-                fontSize: '24px',
+                width: '36px',
+                height: '36px',
+                fontSize: '18px',
                 fontWeight: 'bold',
-                border: '2px solid #28a745',
-                borderRadius: '8px',
+                border: '1px solid #28a745',
+                borderRadius: '6px',
                 backgroundColor: '#fff',
                 color: '#28a745',
                 cursor: 'pointer'
@@ -348,17 +349,17 @@ const InspectieTab = ({
 
       <div className="form-group">
         <label>Aantal koop matten:</label>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button
             type="button"
             onClick={() => setMattenConcurrenten({...mattenConcurrenten, aantal_koop: Math.max(0, (mattenConcurrenten.aantal_koop || 0) - 1)})}
             style={{
-              width: '44px',
-              height: '44px',
-              fontSize: '24px',
+              width: '36px',
+              height: '36px',
+              fontSize: '18px',
               fontWeight: 'bold',
-              border: '2px solid #dc3545',
-              borderRadius: '8px',
+              border: '1px solid #dc3545',
+              borderRadius: '6px',
               backgroundColor: '#fff',
               color: '#dc3545',
               cursor: 'pointer'
@@ -373,22 +374,23 @@ const InspectieTab = ({
             value={mattenConcurrenten.aantal_koop}
             onChange={(e) => setMattenConcurrenten({...mattenConcurrenten, aantal_koop: parseInt(e.target.value) || 0})}
             style={{
-              width: '80px',
+              width: '60px',
               textAlign: 'center',
-              fontSize: '18px',
-              fontWeight: 'bold'
+              fontSize: '16px',
+              fontWeight: 'bold',
+              padding: '6px'
             }}
           />
           <button
             type="button"
             onClick={() => setMattenConcurrenten({...mattenConcurrenten, aantal_koop: (mattenConcurrenten.aantal_koop || 0) + 1})}
             style={{
-              width: '44px',
-              height: '44px',
-              fontSize: '24px',
+              width: '36px',
+              height: '36px',
+              fontSize: '18px',
               fontWeight: 'bold',
-              border: '2px solid #28a745',
-              borderRadius: '8px',
+              border: '1px solid #28a745',
+              borderRadius: '6px',
               backgroundColor: '#fff',
               color: '#28a745',
               cursor: 'pointer'
