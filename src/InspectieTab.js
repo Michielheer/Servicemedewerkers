@@ -740,13 +740,29 @@ const InspectieTab = ({
                   </div>
                 </td>
                 <td>
-                  <input
-                    type="number"
-                    className="form-control"
-                    min="0"
-                    value={toebehoren.aantal}
-                    onChange={(e) => updateToebehorenData(index, 'aantal', parseInt(e.target.value) || 0)}
-                  />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <button
+                      type="button"
+                      className="aantal-btn aantal-btn-minus"
+                      onClick={() => updateToebehorenData(index, 'aantal', Math.max(0, (toebehoren.aantal || 0) - 1))}
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      className="aantal-input"
+                      min="0"
+                      value={toebehoren.aantal}
+                      onChange={(e) => updateToebehorenData(index, 'aantal', parseInt(e.target.value) || 0)}
+                    />
+                    <button
+                      type="button"
+                      className="aantal-btn aantal-btn-plus"
+                      onClick={() => updateToebehorenData(index, 'aantal', (toebehoren.aantal || 0) + 1)}
+                    >
+                      +
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
