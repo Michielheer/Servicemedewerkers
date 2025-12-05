@@ -144,8 +144,33 @@ const HARDCODED_CRM_KLANTEN = [
   }
 ];
 
-// Authenticatie gebeurt nu via beveiligde backend API
-// Wachtwoorden staan NIET meer in frontend code
+// Gebruikers authenticatie
+const AUTH_USERS = [
+  {
+    email: 'michiel.heerkens@lavans.nl',
+    password: 'Herfst2025!',
+    name: 'Michiel Heerkens',
+    role: 'Service Manager',
+    initials: 'MH',
+    shortName: 'Michiel'
+  },
+  {
+    email: 'tijn.heerkens@lavans.nl',
+    password: 'Herfst2025!',
+    name: 'Tijn Heerkens',
+    role: 'Servicemedewerker',
+    initials: 'TH',
+    shortName: 'Tijn'
+  },
+  {
+    email: 'roberto.hendrikse@lavans.nl',
+    password: 'Winter2025!',
+    name: 'Roberto Hendrikse',
+    role: 'Servicemedewerker',
+    initials: 'RH',
+    shortName: 'Roberto'
+  }
+];
 
 const CSV_SEPARATOR = ';';
 
@@ -1310,23 +1335,22 @@ function App() {
   const handleLogin = async ({ email, password }) => {
     setLoading(true);
     try {
-      const config = getDataConfig();
-      
-      // Gebruik beveiligde backend API voor authenticatie
-      const response = await fetch(`${config.endpoints.apiBaseUrl}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
+      const normalizedEmail = (email || '').trim().toLowerCase();
+      const normalizedPassword = (password || '').trim();
+      const user = AUTH_USERS.find(u => u.email === normalizedEmail);
 
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        showMessage(result.error || 'Onjuiste combinatie van e-mailadres en wachtwoord.', 'error');
+      if (!user || user.password !== normalizedPassword) {
+        showMessage('Onjuiste combinatie van e-mailadres en wachtwoord.', 'error');
         return false;
       }
 
-      const userInfo = result.user;
+      const userInfo = {
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        initials: user.initials,
+        shortName: user.shortName
+      };
 
       setIsAuthenticated(true);
       setCurrentUser(userInfo);
@@ -1334,12 +1358,12 @@ function App() {
 
       setFormData(prev => ({
         ...prev,
-        inspecteur: userInfo.shortName || userInfo.name,
+        inspecteur: user.shortName || user.name,
         datum: format(new Date(), 'yyyy-MM-dd'),
         tijd: format(new Date(), 'HH:mm')
       }));
       setActiveTab('inspectie');
-      showMessage(`Welkom terug, ${userInfo.shortName || userInfo.name}!`, 'success');
+      showMessage(`Welkom terug, ${user.shortName || user.name}!`, 'success');
       return true;
     } catch (error) {
       console.error('Login fout:', error);
