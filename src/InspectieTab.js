@@ -362,32 +362,49 @@ const InspectieTab = ({
                       />
                     </td>
                     <td>
-                      <div className="checkbox-group">
-                        <input
-                          type="checkbox"
-                          checked={toBool(mat.aanwezig)}
-                          onChange={(e) => updateStandaardMatData(index, 'aanwezig', e.target.checked)}
-                        />
-                        <span>{boolToJaNee(toBool(mat.aanwezig))}</span>
+                      <div className={`checkbox-group ${mat.aanwezig === null ? 'needs-input' : ''}`}>
+                        <select
+                          className={`form-control ${mat.aanwezig === null ? 'warning-border' : ''}`}
+                          value={mat.aanwezig === null ? '' : (mat.aanwezig ? 'ja' : 'nee')}
+                          onChange={(e) => updateStandaardMatData(index, 'aanwezig', e.target.value === 'ja')}
+                          style={{ 
+                            minWidth: '80px',
+                            backgroundColor: mat.aanwezig === null ? '#fff3cd' : 'white'
+                          }}
+                        >
+                          <option value="">⚠️ Kies</option>
+                          <option value="ja">✓ Ja</option>
+                          <option value="nee">✗ Nee</option>
+                        </select>
                       </div>
                     </td>
                     <td>
-                      <div className="checkbox-group">
-                        <input
-                          type="checkbox"
-                          checked={toBool(mat.schoon_onbeschadigd)}
-                          onChange={(e) => updateStandaardMatData(index, 'schoon_onbeschadigd', e.target.checked)}
-                        />
-                        <span>{boolToJaNee(toBool(mat.schoon_onbeschadigd))}</span>
+                      <div className={`checkbox-group ${mat.schoon_onbeschadigd === null ? 'needs-input' : ''}`}>
+                        <select
+                          className={`form-control ${mat.schoon_onbeschadigd === null ? 'warning-border' : ''}`}
+                          value={mat.schoon_onbeschadigd === null ? '' : (mat.schoon_onbeschadigd ? 'ja' : 'nee')}
+                          onChange={(e) => updateStandaardMatData(index, 'schoon_onbeschadigd', e.target.value === 'ja')}
+                          style={{ 
+                            minWidth: '80px',
+                            backgroundColor: mat.schoon_onbeschadigd === null ? '#fff3cd' : 'white'
+                          }}
+                        >
+                          <option value="">⚠️ Kies</option>
+                          <option value="ja">✓ Ja</option>
+                          <option value="nee">✗ Nee</option>
+                        </select>
                       </div>
                     </td>
                     <td>
                       <select
-                        className="form-control vuilgraad-dropdown"
+                        className={`form-control vuilgraad-dropdown ${!mat.vuilgraad_label ? 'warning-border' : ''}`}
                         value={mat.vuilgraad_label || ''}
                         onChange={(e) => updateStandaardMatData(index, 'vuilgraad_label', e.target.value)}
+                        style={{ 
+                          backgroundColor: !mat.vuilgraad_label ? '#fff3cd' : 'white'
+                        }}
                       >
-                        <option value="">Selecteer</option>
+                        <option value="">⚠️ Kies</option>
                         <option value="Schoon">Schoon</option>
                         <option value="Licht vervuild">Licht vervuild</option>
                         <option value="Sterk vervuild">Sterk vervuild</option>
@@ -450,32 +467,49 @@ const InspectieTab = ({
                   />
                 </td>
                 <td>
-                  <div className="checkbox-group">
-                    <input
-                      type="checkbox"
-                      checked={toBool(mat.aanwezig)}
-                      onChange={(e) => updateLogomatData(index, 'aanwezig', e.target.checked)}
-                    />
-                    <span>{boolToJaNee(toBool(mat.aanwezig))}</span>
+                  <div className={`checkbox-group ${mat.aanwezig === null ? 'needs-input' : ''}`}>
+                    <select
+                      className={`form-control ${mat.aanwezig === null ? 'warning-border' : ''}`}
+                      value={mat.aanwezig === null ? '' : (mat.aanwezig ? 'ja' : 'nee')}
+                      onChange={(e) => updateLogomatData(index, 'aanwezig', e.target.value === 'ja')}
+                      style={{ 
+                        minWidth: '80px',
+                        backgroundColor: mat.aanwezig === null ? '#fff3cd' : 'white'
+                      }}
+                    >
+                      <option value="">⚠️ Kies</option>
+                      <option value="ja">✓ Ja</option>
+                      <option value="nee">✗ Nee</option>
+                    </select>
                   </div>
                 </td>
                 <td>
-                  <div className="checkbox-group">
-                    <input
-                      type="checkbox"
-                      checked={toBool(mat.schoon_onbeschadigd)}
-                      onChange={(e) => updateLogomatData(index, 'schoon_onbeschadigd', e.target.checked)}
-                    />
-                    <span>{boolToJaNee(toBool(mat.schoon_onbeschadigd))}</span>
+                  <div className={`checkbox-group ${mat.schoon_onbeschadigd === null ? 'needs-input' : ''}`}>
+                    <select
+                      className={`form-control ${mat.schoon_onbeschadigd === null ? 'warning-border' : ''}`}
+                      value={mat.schoon_onbeschadigd === null ? '' : (mat.schoon_onbeschadigd ? 'ja' : 'nee')}
+                      onChange={(e) => updateLogomatData(index, 'schoon_onbeschadigd', e.target.value === 'ja')}
+                      style={{ 
+                        minWidth: '80px',
+                        backgroundColor: mat.schoon_onbeschadigd === null ? '#fff3cd' : 'white'
+                      }}
+                    >
+                      <option value="">⚠️ Kies</option>
+                      <option value="ja">✓ Ja</option>
+                      <option value="nee">✗ Nee</option>
+                    </select>
                   </div>
                 </td>
                 <td>
                   <select
-                    className="form-control vuilgraad-dropdown"
+                    className={`form-control vuilgraad-dropdown ${!mat.vuilgraad_label ? 'warning-border' : ''}`}
                     value={mat.vuilgraad_label || ''}
                     onChange={(e) => updateLogomatData(index, 'vuilgraad_label', e.target.value)}
+                    style={{ 
+                      backgroundColor: !mat.vuilgraad_label ? '#fff3cd' : 'white'
+                    }}
                   >
-                    <option value="">Selecteer</option>
+                    <option value="">⚠️ Kies</option>
                     <option value="Schoon">Schoon</option>
                     <option value="Licht vervuild">Licht vervuild</option>
                     <option value="Sterk vervuild">Sterk vervuild</option>

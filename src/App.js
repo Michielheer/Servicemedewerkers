@@ -433,9 +433,10 @@ const transformStandaardMatRecord = (row) => ({
   afdeling: row.afdeling || '',
   ligplaats: row.ligplaats || '',
   aantal: parseNumber(row.aantal, 0),
-  aanwezig: booleanFromJaNee(row.aanwezig),
-  schoon_onbeschadigd: booleanFromJaNee(row.schoon_onbeschadigd),
-  vuilgraad_label: row.vuilgraad_label || '',
+  // Standaard null zodat gebruiker verplicht moet invullen
+  aanwezig: row.aanwezig !== undefined && row.aanwezig !== '' ? booleanFromJaNee(row.aanwezig) : null,
+  schoon_onbeschadigd: row.schoon_onbeschadigd !== undefined && row.schoon_onbeschadigd !== '' ? booleanFromJaNee(row.schoon_onbeschadigd) : null,
+  vuilgraad_label: row.vuilgraad_label || null,
   barcode: row.barcode || '',
   opmerkingen: row.opmerkingen || ''
 });
@@ -446,9 +447,10 @@ const transformLogomatRecord = (row) => ({
   afdeling: row.afdeling || '',
   ligplaats: row.ligplaats || '',
   aantal: parseNumber(row.aantal, 0),
-  aanwezig: booleanFromJaNee(row.aanwezig),
-  schoon_onbeschadigd: booleanFromJaNee(row.schoon_onbeschadigd),
-  vuilgraad_label: row.vuilgraad_label || '',
+  // Standaard null zodat gebruiker verplicht moet invullen
+  aanwezig: row.aanwezig !== undefined && row.aanwezig !== '' ? booleanFromJaNee(row.aanwezig) : null,
+  schoon_onbeschadigd: row.schoon_onbeschadigd !== undefined && row.schoon_onbeschadigd !== '' ? booleanFromJaNee(row.schoon_onbeschadigd) : null,
+  vuilgraad_label: row.vuilgraad_label || null,
   barcode: row.barcode || '',
   representativiteitsscore: parseNumber(row.representativiteitsscore, 100),
   opmerkingen: row.opmerkingen || ''
