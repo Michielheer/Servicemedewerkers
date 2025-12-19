@@ -284,7 +284,7 @@ const InspectieTab = ({
               const naam = formatNaam(contact.voornaam, contact.tussenvoegsel, contact.achternaam);
               return (
                 <option key={idx} value={naam}>
-                  {naam} {contact.functie ? `(${contact.functie})` : ''} {contact.routecontact ? '★' : ''}
+                  {naam} {contact.functie ? `(${contact.functie})` : ''}
                 </option>
               );
             })
@@ -373,44 +373,49 @@ const InspectieTab = ({
       )}
     </div>
 
-    {/* START INSPECTIE KNOP */}
+    {/* START INSPECTIE - alleen tonen als alles is ingevuld */}
     {!inspectieGestart ? (
-      <div style={{
-        textAlign: 'center',
-        padding: '30px 20px',
-        marginTop: '20px'
-      }}>
-        <button
-          onClick={() => setInspectieGestart(true)}
-          disabled={!kanStarten}
-          style={{
-            padding: '18px 40px',
-            fontSize: '1.2em',
-            fontWeight: 'bold',
-            backgroundColor: kanStarten ? '#28a745' : '#ccc',
-            color: 'white',
-            border: 'none',
-            borderRadius: '10px',
-            cursor: kanStarten ? 'pointer' : 'not-allowed',
-            boxShadow: kanStarten ? '0 4px 15px rgba(40, 167, 69, 0.4)' : 'none',
-            transition: 'all 0.2s ease'
-          }}
-        >
-          ▶ Start Inspectie
-        </button>
-        
-        {!kanStarten && (
-          <div style={{ 
-            marginTop: '15px', 
-            color: '#666',
-            fontSize: '0.95em'
+      kanStarten ? (
+        <div style={{
+          marginTop: '30px',
+          borderTop: '2px solid #e9ecef',
+          paddingTop: '30px'
+        }}>
+          <div style={{
+            backgroundColor: '#f0fff4',
+            border: '2px solid #28a745',
+            borderRadius: '12px',
+            padding: '25px',
+            textAlign: 'center'
           }}>
-            {!selectedKlant && <div>• Selecteer eerst een klant</div>}
-            {selectedKlant && !formData.contactpersoon && <div>• Kies een contactpersoon</div>}
-            {selectedKlant && formData.contactpersoon && !formData.contact_email && <div>• Vul een e-mailadres in</div>}
+            <div style={{ 
+              fontSize: '1.1em', 
+              color: '#155724', 
+              marginBottom: '15px',
+              fontWeight: '500'
+            }}>
+              Klant en contactpersoon bevestigd
+            </div>
+            <button
+              onClick={() => setInspectieGestart(true)}
+              style={{
+                padding: '16px 50px',
+                fontSize: '1.15em',
+                fontWeight: 'bold',
+                backgroundColor: '#28a745',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                boxShadow: '0 4px 15px rgba(40, 167, 69, 0.35)',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              Doorgaan naar Inspectie →
+            </button>
           </div>
-        )}
-      </div>
+        </div>
+      ) : null
     ) : (
       <>
         {/* Inspectie gestart header */}
