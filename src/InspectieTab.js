@@ -300,22 +300,18 @@ const InspectieTab = ({
 
       {/* Velden voor contactpersoon - altijd zichtbaar */}
       <div style={{ 
-        backgroundColor: formData.is_nieuwe_contactpersoon ? '#fff3cd' : 'white',
+        backgroundColor: 'white',
         padding: '15px',
         borderRadius: '8px',
-        border: formData.is_nieuwe_contactpersoon ? '2px dashed #ffc107' : '1px solid #dee2e6'
+        border: formData.is_nieuwe_contactpersoon ? '1px solid #007bff' : '1px solid #dee2e6'
       }}>
         {formData.is_nieuwe_contactpersoon && (
           <div style={{ 
             marginBottom: '12px', 
-            padding: '8px 12px',
-            backgroundColor: '#ffc107',
-            borderRadius: '4px',
             fontSize: '0.9em',
-            fontWeight: 'bold',
-            color: '#856404'
+            color: '#007bff'
           }}>
-            ➕ Nieuwe contactpersoon toevoegen
+            Nieuwe contactpersoon
           </div>
         )}
         
