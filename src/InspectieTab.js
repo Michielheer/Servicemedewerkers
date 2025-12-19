@@ -64,6 +64,9 @@ const InspectieTab = ({
   <div className="card">
     <h2>Inspectie Formulier</h2>
     
+    {/* Klant en Contact sectie - verbergen als inspectie gestart */}
+    {!inspectieGestart ? (
+      <>
     {/* Klant selectie dropdown */}
     <div className="form-group">
       <label style={{ fontWeight: 'bold', fontSize: '1.1em' }}>
@@ -374,48 +377,50 @@ const InspectieTab = ({
     </div>
 
     {/* START INSPECTIE - alleen tonen als alles is ingevuld */}
-    {!inspectieGestart ? (
-      kanStarten ? (
-        <div style={{
-          marginTop: '25px',
-          paddingTop: '20px',
-          borderTop: '1px solid #dee2e6',
-          textAlign: 'center'
-        }}>
-          <button
-            onClick={() => setInspectieGestart(true)}
-            style={{
-              padding: '12px 30px',
-              fontSize: '1em',
-              fontWeight: '500',
-              backgroundColor: '#007bff',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              transition: 'background-color 0.2s ease'
-            }}
-          >
-            Doorgaan naar inspectie →
-          </button>
-        </div>
-      ) : null
+    {kanStarten && (
+      <div style={{
+        marginTop: '25px',
+        paddingTop: '20px',
+        borderTop: '1px solid #dee2e6',
+        textAlign: 'center'
+      }}>
+        <button
+          onClick={() => setInspectieGestart(true)}
+          style={{
+            padding: '12px 30px',
+            fontSize: '1em',
+            fontWeight: '500',
+            backgroundColor: '#007bff',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            transition: 'background-color 0.2s ease'
+          }}
+        >
+          Doorgaan naar inspectie →
+        </button>
+      </div>
+    )}
+      </>
     ) : (
       <>
-        {/* Inspectie gestart header */}
+        {/* Geminimaliseerde klant/contact header */}
         <div style={{
-          backgroundColor: '#d4edda',
-          padding: '12px 20px',
+          backgroundColor: '#e7f3ff',
+          padding: '12px 16px',
           borderRadius: '8px',
-          marginTop: '20px',
           marginBottom: '20px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          border: '1px solid #c3e6cb'
+          border: '1px solid #b8daff'
         }}>
-          <div style={{ fontWeight: 'bold', color: '#155724' }}>
-            ✓ Inspectie gestart voor {formData.klantnaam}
+          <div>
+            <span style={{ fontWeight: 'bold', color: '#004085' }}>{formData.klantnaam}</span>
+            <span style={{ color: '#666', marginLeft: '10px', fontSize: '0.9em' }}>
+              • {formData.contactpersoon}
+            </span>
           </div>
           <button
             onClick={() => setInspectieGestart(false)}
@@ -423,13 +428,13 @@ const InspectieTab = ({
               padding: '6px 12px',
               fontSize: '0.85em',
               backgroundColor: 'transparent',
-              color: '#155724',
-              border: '1px solid #155724',
+              color: '#004085',
+              border: '1px solid #004085',
               borderRadius: '5px',
               cursor: 'pointer'
             }}
           >
-            ← Terug naar klant/contact
+            Wijzigen
           </button>
         </div>
 
