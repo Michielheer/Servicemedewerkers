@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 const InspectieTab = ({
   formData,
@@ -41,6 +41,10 @@ const InspectieTab = ({
   formatNaam
 }) => {
   const dropdownRef = useRef(null);
+  const [inspectieGestart, setInspectieGestart] = useState(false);
+
+  // Check of we kunnen starten
+  const kanStarten = selectedKlant && formData.contactpersoon && formData.contact_email;
 
   // Click outside handler
   useEffect(() => {
@@ -368,6 +372,77 @@ const InspectieTab = ({
         </div>
       )}
     </div>
+
+    {/* START INSPECTIE KNOP */}
+    {!inspectieGestart ? (
+      <div style={{
+        textAlign: 'center',
+        padding: '30px 20px',
+        marginTop: '20px'
+      }}>
+        <button
+          onClick={() => setInspectieGestart(true)}
+          disabled={!kanStarten}
+          style={{
+            padding: '18px 40px',
+            fontSize: '1.2em',
+            fontWeight: 'bold',
+            backgroundColor: kanStarten ? '#28a745' : '#ccc',
+            color: 'white',
+            border: 'none',
+            borderRadius: '10px',
+            cursor: kanStarten ? 'pointer' : 'not-allowed',
+            boxShadow: kanStarten ? '0 4px 15px rgba(40, 167, 69, 0.4)' : 'none',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          ▶ Start Inspectie
+        </button>
+        
+        {!kanStarten && (
+          <div style={{ 
+            marginTop: '15px', 
+            color: '#666',
+            fontSize: '0.95em'
+          }}>
+            {!selectedKlant && <div>• Selecteer eerst een klant</div>}
+            {selectedKlant && !formData.contactpersoon && <div>• Kies een contactpersoon</div>}
+            {selectedKlant && formData.contactpersoon && !formData.contact_email && <div>• Vul een e-mailadres in</div>}
+          </div>
+        )}
+      </div>
+    ) : (
+      <>
+        {/* Inspectie gestart header */}
+        <div style={{
+          backgroundColor: '#d4edda',
+          padding: '12px 20px',
+          borderRadius: '8px',
+          marginTop: '20px',
+          marginBottom: '20px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          border: '1px solid #c3e6cb'
+        }}>
+          <div style={{ fontWeight: 'bold', color: '#155724' }}>
+            ✓ Inspectie gestart voor {formData.klantnaam}
+          </div>
+          <button
+            onClick={() => setInspectieGestart(false)}
+            style={{
+              padding: '6px 12px',
+              fontSize: '0.85em',
+              backgroundColor: 'transparent',
+              color: '#155724',
+              border: '1px solid #155724',
+              borderRadius: '5px',
+              cursor: 'pointer'
+            }}
+          >
+            ← Terug naar klant/contact
+          </button>
+        </div>
 
     <div className="form-group">
       <label>Servicemedewerker:</label>
@@ -966,6 +1041,8 @@ const InspectieTab = ({
         {loading ? 'Genereren...' : '📄 Klantrapport'}
       </button>
     </div>
+      </>
+    )}
   </div>
   );
 };
