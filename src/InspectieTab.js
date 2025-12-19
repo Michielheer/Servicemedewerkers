@@ -34,7 +34,11 @@ const InspectieTab = ({
   setShowKlantDropdown,
   filteredKlanten,
   klantenLoading,
-  handleKlantSelect
+  handleKlantSelect,
+  // Contactpersonen props
+  contactpersonen,
+  setContactpersonen,
+  formatNaam
 }) => {
   const dropdownRef = useRef(null);
 
@@ -178,24 +182,191 @@ const InspectieTab = ({
       </div>
     )}
 
-    <div className="form-group">
-      <label>Contactpersoon:</label>
-      <input
-        type="text"
-        className="form-control"
-        value={formData.contactpersoon}
-        onChange={(e) => setFormData({...formData, contactpersoon: e.target.value})}
-      />
-    </div>
+    {/* Contactpersoon sectie - verbeterde UX */}
+    <div className="contactpersoon-section" style={{
+      backgroundColor: '#f8f9fa',
+      padding: '20px',
+      borderRadius: '10px',
+      marginBottom: '20px',
+      border: '1px solid #dee2e6'
+    }}>
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'space-between',
+        marginBottom: '10px' 
+      }}>
+        <label style={{ 
+          fontWeight: 'bold', 
+          fontSize: '1.1em', 
+          color: '#333',
+          margin: 0
+        }}>
+          Service moment samen uitgevoerd met:
+        </label>
+        <span 
+          className="info-tooltip"
+          title="Selecteer de contactpersoon met wie je het service moment hebt uitgevoerd. Deze persoon ontvangt ook het rapport per e-mail."
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '22px',
+            height: '22px',
+            borderRadius: '50%',
+            backgroundColor: '#007bff',
+            color: 'white',
+            fontSize: '13px',
+            fontWeight: 'bold',
+            cursor: 'help'
+          }}
+        >
+          i
+        </span>
+      </div>
+      <p style={{ 
+        fontSize: '0.9em', 
+        color: '#666', 
+        margin: '0 0 15px 0',
+        lineHeight: '1.4'
+      }}>
+        Het rapport wordt naar deze contactpersoon gemaild.
+      </p>
 
-    <div className="form-group">
-      <label>Contact Email:</label>
-      <input
-        type="email"
-        className="form-control"
-        value={formData.contact_email}
-        onChange={(e) => setFormData({...formData, contact_email: e.target.value})}
-      />
+      {/* Dropdown voor bestaande contactpersonen */}
+      <div className="form-group" style={{ marginBottom: '15px' }}>
+        <label style={{ fontSize: '0.9em', color: '#555', marginBottom: '5px', display: 'block' }}>
+          Kies bestaande contactpersoon:
+        </label>
+        <select
+          className="form-control"
+          value={formData.contactpersoon || ''}
+          onChange={(e) => {
+            const selectedValue = e.target.value;
+            if (selectedValue === '__NIEUW__') {
+              // Reset voor nieuwe contactpersoon
+              setFormData({
+                ...formData, 
+                contactpersoon: '', 
+                contact_email: '',
+                is_nieuwe_contactpersoon: true
+              });
+            } else if (selectedValue) {
+              // Zoek de geselecteerde contactpersoon
+              const selected = contactpersonen.find(c => 
+                formatNaam(c.voornaam, c.tussenvoegsel, c.achternaam) === selectedValue
+              );
+              if (selected) {
+                setFormData({
+                  ...formData, 
+                  contactpersoon: selectedValue,
+                  contact_email: selected.email || '',
+                  is_nieuwe_contactpersoon: false
+                });
+              }
+            }
+          }}
+          style={{
+            fontSize: '1em',
+            padding: '12px',
+            borderRadius: '6px',
+            borderColor: formData.contactpersoon ? '#28a745' : '#ced4da'
+          }}
+        >
+          <option value="">-- Selecteer contactpersoon --</option>
+          {contactpersonen
+            .filter(c => c.nog_in_dienst !== false)
+            .map((contact, idx) => {
+              const naam = formatNaam(contact.voornaam, contact.tussenvoegsel, contact.achternaam);
+              return (
+                <option key={idx} value={naam}>
+                  {naam} {contact.functie ? `(${contact.functie})` : ''} {contact.routecontact ? '★' : ''}
+                </option>
+              );
+            })
+          }
+          <option value="__NIEUW__" style={{ fontStyle: 'italic', color: '#007bff' }}>
+            ➕ Nieuwe contactpersoon toevoegen...
+          </option>
+        </select>
+      </div>
+
+      {/* Velden voor contactpersoon - altijd zichtbaar */}
+      <div style={{ 
+        backgroundColor: formData.is_nieuwe_contactpersoon ? '#fff3cd' : 'white',
+        padding: '15px',
+        borderRadius: '8px',
+        border: formData.is_nieuwe_contactpersoon ? '2px dashed #ffc107' : '1px solid #dee2e6'
+      }}>
+        {formData.is_nieuwe_contactpersoon && (
+          <div style={{ 
+            marginBottom: '12px', 
+            padding: '8px 12px',
+            backgroundColor: '#ffc107',
+            borderRadius: '4px',
+            fontSize: '0.9em',
+            fontWeight: 'bold',
+            color: '#856404'
+          }}>
+            ➕ Nieuwe contactpersoon toevoegen
+          </div>
+        )}
+        
+        <div className="form-group" style={{ marginBottom: '12px' }}>
+          <label style={{ fontSize: '0.9em', color: '#555' }}>
+            Naam contactpersoon:
+            {formData.is_nieuwe_contactpersoon && <span style={{ color: '#dc3545' }}> *</span>}
+          </label>
+          <input
+            type="text"
+            className="form-control"
+            value={formData.contactpersoon}
+            onChange={(e) => setFormData({...formData, contactpersoon: e.target.value})}
+            placeholder={formData.is_nieuwe_contactpersoon ? "Bijv. Jan Jansen" : "Selecteer hierboven of typ handmatig"}
+            style={{
+              borderColor: formData.is_nieuwe_contactpersoon && !formData.contactpersoon ? '#dc3545' : undefined
+            }}
+          />
+        </div>
+
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label style={{ fontSize: '0.9em', color: '#555' }}>
+            E-mailadres: <span style={{ color: '#dc3545' }}>* verplicht</span>
+          </label>
+          <input
+            type="email"
+            className={`form-control ${!formData.contact_email ? 'is-invalid' : ''}`}
+            value={formData.contact_email}
+            onChange={(e) => setFormData({...formData, contact_email: e.target.value})}
+            placeholder="naam@bedrijf.nl"
+            required
+            style={{
+              borderColor: !formData.contact_email ? '#dc3545' : '#28a745',
+              backgroundColor: !formData.contact_email ? '#fff5f5' : undefined
+            }}
+          />
+          {!formData.contact_email && (
+            <small style={{ color: '#dc3545', display: 'block', marginTop: '5px' }}>
+              E-mailadres is verplicht voor het versturen van het rapport.
+            </small>
+          )}
+        </div>
+      </div>
+
+      {/* Toon waarschuwing als routecontact geen email heeft */}
+      {formData.contactpersoon && !formData.contact_email && (
+        <div style={{
+          marginTop: '12px',
+          padding: '10px',
+          backgroundColor: '#f8d7da',
+          borderRadius: '6px',
+          border: '1px solid #f5c6cb',
+          color: '#721c24',
+          fontSize: '0.9em'
+        }}>
+          ⚠️ Let op: zonder e-mailadres kan het rapport niet worden verstuurd naar deze contactpersoon.
+        </div>
+      )}
     </div>
 
     <div className="form-group">

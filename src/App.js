@@ -2084,6 +2084,10 @@ function App() {
             filteredKlanten={filteredKlanten}
             klantenLoading={klantenLoading}
             handleKlantSelect={handleKlantSelect}
+            // Contactpersonen props
+            contactpersonen={contactpersonen}
+            setContactpersonen={setContactpersonen}
+            formatNaam={formatNaam}
           />
         )}
         {activeTab === 'todos' && (

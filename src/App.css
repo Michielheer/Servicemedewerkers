@@ -581,4 +581,68 @@
   opacity: 0.6;
   cursor: not-allowed;
   transform: none !important;
+}
+
+/* Contactpersoon sectie styling */
+.contactpersoon-section {
+  transition: all 0.2s ease;
+}
+
+.contactpersoon-section:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Info tooltip styling */
+.info-tooltip {
+  position: relative;
+  transition: transform 0.2s ease;
+}
+
+.info-tooltip:hover {
+  transform: scale(1.1);
+}
+
+.info-tooltip:hover::after {
+  content: attr(title);
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 8px;
+  background: #333;
+  color: white;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.85em;
+  font-weight: normal;
+  white-space: normal;
+  width: 260px;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  line-height: 1.4;
+}
+
+.info-tooltip:hover::before {
+  content: '';
+  position: absolute;
+  right: 6px;
+  top: 100%;
+  margin-top: 2px;
+  border: 6px solid transparent;
+  border-bottom-color: #333;
+}
+
+/* Input validatie styling */
+.form-control.is-invalid {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.15);
+}
+
+.form-control.is-valid {
+  border-color: #28a745;
+}
+
+/* Contactpersoon dropdown opties */
+select.form-control option[value="__NIEUW__"] {
+  background-color: #e7f3ff;
+  font-weight: bold;
 } 
