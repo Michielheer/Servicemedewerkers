@@ -377,43 +377,27 @@ const InspectieTab = ({
     {!inspectieGestart ? (
       kanStarten ? (
         <div style={{
-          marginTop: '30px',
-          borderTop: '2px solid #e9ecef',
-          paddingTop: '30px'
+          marginTop: '25px',
+          paddingTop: '20px',
+          borderTop: '1px solid #dee2e6',
+          textAlign: 'center'
         }}>
-          <div style={{
-            backgroundColor: '#f0fff4',
-            border: '2px solid #28a745',
-            borderRadius: '12px',
-            padding: '25px',
-            textAlign: 'center'
-          }}>
-            <div style={{ 
-              fontSize: '1.1em', 
-              color: '#155724', 
-              marginBottom: '15px',
-              fontWeight: '500'
-            }}>
-              Klant en contactpersoon bevestigd
-            </div>
-            <button
-              onClick={() => setInspectieGestart(true)}
-              style={{
-                padding: '16px 50px',
-                fontSize: '1.15em',
-                fontWeight: 'bold',
-                backgroundColor: '#28a745',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                boxShadow: '0 4px 15px rgba(40, 167, 69, 0.35)',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              Doorgaan naar Inspectie →
-            </button>
-          </div>
+          <button
+            onClick={() => setInspectieGestart(true)}
+            style={{
+              padding: '12px 30px',
+              fontSize: '1em',
+              fontWeight: '500',
+              backgroundColor: '#007bff',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              transition: 'background-color 0.2s ease'
+            }}
+          >
+            Doorgaan naar inspectie →
+          </button>
         </div>
       ) : null
     ) : (
