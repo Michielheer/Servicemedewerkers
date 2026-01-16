@@ -6,6 +6,7 @@ import InspectieTab from './InspectieTab';
 import TodoTab from './TodoTab';
 import ContactpersonenTab from './ContactpersonenTab';
 import LoginScreen from './LoginScreen';
+import ChangePasswordModal from './ChangePasswordModal';
 import { getDataConfig } from './services/dataConfig';
 
 // Hardcoded CRM klanten data (zoals uit database)
@@ -490,6 +491,7 @@ function App() {
   const [messageType, setMessageType] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [emailDialog, setEmailDialog] = useState({ visible: false, type: null, data: {} });
   const dataConfigRef = useRef(getDataConfig());
 
@@ -2016,12 +2018,21 @@ function App() {
           {currentUser && (
             <div className="header-user">
               <div className="header-user-initials">
-                {currentUser.initials || (currentUser.name ? currentUser.name.substring(0, 2).toUpperCase() : '?')}
+                {currentUser.initials || currentUser.username || (currentUser.name ? currentUser.name.substring(0, 2).toUpperCase() : '?')}
               </div>
               <div className="header-user-info">
                 <span>{currentUser.name}</span>
                 <span>{currentUser.role}</span>
               </div>
+              <button
+                type="button"
+                className="btn btn-secondary btn-small"
+                onClick={() => setShowPasswordModal(true)}
+                style={{ marginRight: '8px' }}
+                title="Wachtwoord wijzigen"
+              >
+                🔑
+              </button>
               <button
                 type="button"
                 className="btn btn-secondary btn-small logout-btn"
@@ -2538,6 +2549,17 @@ function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Wachtwoord wijzigen modal */}
+      {showPasswordModal && currentUser && (
+        <ChangePasswordModal
+          username={currentUser.username}
+          onClose={() => setShowPasswordModal(false)}
+          onSuccess={() => {
+            showMessage('Wachtwoord succesvol gewijzigd!', 'success');
+          }}
+        />
       )}
     </div>
   );

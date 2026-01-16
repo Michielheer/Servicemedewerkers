@@ -10,6 +10,7 @@ BEGIN
         Gebruikersnaam NVARCHAR(20) NOT NULL UNIQUE,  -- Bijv. AOOR, ASTR
         WachtwoordHash NVARCHAR(255) NOT NULL,
         Naam NVARCHAR(100) NOT NULL,
+        Email NVARCHAR(255),  -- Voor wachtwoord reset
         Rol NVARCHAR(100) NOT NULL DEFAULT 'ServiceMedewerker',
         Actief BIT NOT NULL DEFAULT 1,
         LaatsteLogin DATETIME2,
@@ -29,6 +30,31 @@ BEGIN
         ALTER TABLE dbo.AppGebruikers ADD Gebruikersnaam NVARCHAR(20);
         PRINT 'Kolom Gebruikersnaam toegevoegd';
     END
+    
+    -- Voeg Email kolom toe als die niet bestaat
+    IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.AppGebruikers') AND name = 'Email')
+    BEGIN
+        ALTER TABLE dbo.AppGebruikers ADD Email NVARCHAR(255);
+        PRINT 'Kolom Email toegevoegd';
+    END
+END
+GO
+
+-- Stap 1b: Maak WachtwoordResetTokens tabel aan
+IF OBJECT_ID('dbo.WachtwoordResetTokens', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.WachtwoordResetTokens (
+        TokenID INT IDENTITY(1,1) PRIMARY KEY,
+        GebruikerID INT NOT NULL,
+        Token NVARCHAR(100) NOT NULL UNIQUE,
+        Email NVARCHAR(255) NOT NULL,
+        GeldigTot DATETIME2 NOT NULL,
+        Gebruikt BIT NOT NULL DEFAULT 0,
+        CreatedAt DATETIME2 NOT NULL DEFAULT GETDATE()
+    );
+    
+    CREATE INDEX IX_WachtwoordResetTokens_Token ON dbo.WachtwoordResetTokens(Token);
+    PRINT 'Tabel WachtwoordResetTokens aangemaakt';
 END
 GO
 
