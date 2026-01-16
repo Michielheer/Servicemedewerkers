@@ -144,32 +144,13 @@ const HARDCODED_CRM_KLANTEN = [
   }
 ];
 
-// Gebruikers authenticatie
+// Gebruikers authenticatie - fallback (database is primair)
+// Standaard wachtwoord: Lavans2025!
 const AUTH_USERS = [
-  {
-    email: 'michiel.heerkens@lavans.nl',
-    password: 'Herfst2025!',
-    name: 'Michiel Heerkens',
-    role: 'Service Manager',
-    initials: 'MH',
-    shortName: 'Michiel'
-  },
-  {
-    email: 'tijn.heerkens@lavans.nl',
-    password: 'Herfst2025!',
-    name: 'Tijn Heerkens',
-    role: 'Servicemedewerker',
-    initials: 'TH',
-    shortName: 'Tijn'
-  },
-  {
-    email: 'roberto.hendrikse@lavans.nl',
-    password: 'Winter2025!',
-    name: 'Roberto Hendrikse',
-    role: 'Servicemedewerker',
-    initials: 'RH',
-    shortName: 'Roberto'
-  }
+  { username: 'MHEE', password: 'Herfst2025!', name: 'Michiel Heerkens', role: 'Service Manager' },
+  { username: 'THEE', password: 'Herfst2025!', name: 'Tijn Heerkens', role: 'ServiceMedewerker' },
+  { username: 'RHEN', password: 'Winter2025!', name: 'Roberto Hendrikse', role: 'ServiceMedewerker' },
+  // Volledige lijst is in de database - zie sql/insert_servicemedewerkers.sql
 ];
 
 const CSV_SEPARATOR = ';';
@@ -1332,24 +1313,61 @@ function App() {
     }, 10);
   }, [contactCatalog, formatNaam, hydrateKlantData]);
 
-  const handleLogin = async ({ email, password }) => {
+  const handleLogin = async ({ username, password }) => {
     setLoading(true);
     try {
-      const normalizedEmail = (email || '').trim().toLowerCase();
+      const normalizedUsername = (username || '').trim().toUpperCase();
       const normalizedPassword = (password || '').trim();
-      const user = AUTH_USERS.find(u => u.email === normalizedEmail);
-
+      
+      // Probeer eerst de backend API
+      try {
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: normalizedUsername, password: normalizedPassword })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.user) {
+            const userInfo = {
+              name: data.user.name,
+              username: data.user.username,
+              role: data.user.role,
+              initials: data.user.initials || data.user.username
+            };
+            
+            setIsAuthenticated(true);
+            setCurrentUser(userInfo);
+            localStorage.setItem('lavans_auth_user', JSON.stringify(userInfo));
+            
+            setFormData(prev => ({
+              ...prev,
+              inspecteur: userInfo.name,
+              datum: format(new Date(), 'yyyy-MM-dd'),
+              tijd: format(new Date(), 'HH:mm')
+            }));
+            setActiveTab('inspectie');
+            showMessage(`Welkom terug, ${userInfo.name}!`, 'success');
+            return true;
+          }
+        }
+      } catch (apiError) {
+        console.log('Backend login niet beschikbaar, fallback naar lokaal:', apiError);
+      }
+      
+      // Fallback naar lokale authenticatie
+      const user = AUTH_USERS.find(u => u.username === normalizedUsername);
       if (!user || user.password !== normalizedPassword) {
-        showMessage('Onjuiste combinatie van e-mailadres en wachtwoord.', 'error');
+        showMessage('Onjuiste combinatie van gebruikersnaam en wachtwoord.', 'error');
         return false;
       }
 
       const userInfo = {
         name: user.name,
-        email: user.email,
+        username: user.username,
         role: user.role,
-        initials: user.initials,
-        shortName: user.shortName
+        initials: user.username
       };
 
       setIsAuthenticated(true);
@@ -1358,12 +1376,12 @@ function App() {
 
       setFormData(prev => ({
         ...prev,
-        inspecteur: user.shortName || user.name,
+        inspecteur: user.name,
         datum: format(new Date(), 'yyyy-MM-dd'),
         tijd: format(new Date(), 'HH:mm')
       }));
       setActiveTab('inspectie');
-      showMessage(`Welkom terug, ${user.shortName || user.name}!`, 'success');
+      showMessage(`Welkom terug, ${user.name}!`, 'success');
       return true;
     } catch (error) {
       console.error('Login fout:', error);

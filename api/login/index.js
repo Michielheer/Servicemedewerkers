@@ -1,6 +1,7 @@
 /**
  * Login API - Veilige authenticatie via database
  * Wachtwoorden worden gehashed opgeslagen met bcrypt
+ * Login kan met gebruikersnaam (bijv. AOOR) of e-mailadres
  */
 
 const { getPool, sql } = require('../shared/db');
@@ -10,21 +11,24 @@ module.exports = async function (context, req) {
   context.log('Login API aangeroepen');
 
   try {
-    const { email, password } = req.body || {};
+    const { email, password, username } = req.body || {};
+    
+    // Ondersteun zowel 'email' als 'username' parameter
+    const loginId = username || email;
 
-    if (!email || !password) {
+    if (!loginId || !password) {
       context.res = {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           success: false, 
-          error: 'Email en wachtwoord zijn verplicht' 
+          error: 'Gebruikersnaam en wachtwoord zijn verplicht' 
         })
       };
       return;
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedLoginId = loginId.trim().toUpperCase();
     const pool = await getPool();
 
     // Check of de gebruikerstabel bestaat
@@ -37,13 +41,15 @@ module.exports = async function (context, req) {
     let passwordValid = false;
 
     if (hasTable) {
-      // Haal gebruiker uit database
+      // Haal gebruiker uit database - zoek op Gebruikersnaam OF Email
       const result = await pool.request()
-        .input('email', sql.NVarChar(255), normalizedEmail)
+        .input('loginId', sql.NVarChar(255), normalizedLoginId)
+        .input('loginIdLower', sql.NVarChar(255), loginId.trim().toLowerCase())
         .query(`
-          SELECT GebruikerID, Email, WachtwoordHash, Naam, Rol, Initialen, KorteNaam, Actief
+          SELECT GebruikerID, Gebruikersnaam, WachtwoordHash, Naam, Rol, Actief
           FROM dbo.AppGebruikers
-          WHERE Email = @email AND Actief = 1
+          WHERE (UPPER(Gebruikersnaam) = @loginId OR LOWER(ISNULL(Email,'')) = @loginIdLower) 
+            AND Actief = 1
         `);
 
       if (result.recordset.length > 0) {
@@ -55,10 +61,9 @@ module.exports = async function (context, req) {
         if (passwordValid) {
           user = {
             name: dbUser.Naam,
-            email: dbUser.Email,
+            username: dbUser.Gebruikersnaam,
             role: dbUser.Rol,
-            initials: dbUser.Initialen,
-            shortName: dbUser.KorteNaam
+            initials: dbUser.Gebruikersnaam
           };
 
           // Update laatste login
@@ -72,67 +77,53 @@ module.exports = async function (context, req) {
         } else {
           // Verhoog login pogingen
           await pool.request()
-            .input('email', sql.NVarChar(255), normalizedEmail)
+            .input('loginId', sql.NVarChar(255), normalizedLoginId)
             .query(`
               UPDATE dbo.AppGebruikers 
               SET AantalLoginPogingen = AantalLoginPogingen + 1
-              WHERE Email = @email
+              WHERE UPPER(Gebruikersnaam) = @loginId
             `);
         }
       }
     }
     
-    // Fallback naar environment variables als tabel niet bestaat of user niet gevonden
+    // Fallback naar hardcoded users als tabel niet bestaat
     if (!user && !hasTable) {
-      const envUsers = [
-        { email: 'michiel.heerkens@lavans.nl', pwdKey: 'AUTH_PWD_MICHIEL', name: 'Michiel Heerkens', role: 'Service Manager', initials: 'MH', shortName: 'Michiel' },
-        { email: 'tijn.heerkens@lavans.nl', pwdKey: 'AUTH_PWD_TIJN', name: 'Tijn Heerkens', role: 'Servicemedewerker', initials: 'TH', shortName: 'Tijn' },
-        { email: 'roberto.hendrikse@lavans.nl', pwdKey: 'AUTH_PWD_ROBERTO', name: 'Roberto Hendrikse', role: 'Servicemedewerker', initials: 'RH', shortName: 'Roberto' }
+      const fallbackUsers = [
+        { username: 'MHEE', password: 'Herfst2025!', name: 'Michiel Heerkens', role: 'Service Manager' },
+        { username: 'THEE', password: 'Herfst2025!', name: 'Tijn Heerkens', role: 'ServiceMedewerker' },
+        { username: 'RHEN', password: 'Winter2025!', name: 'Roberto Hendrikse', role: 'ServiceMedewerker' }
       ];
 
-      const envUser = envUsers.find(u => u.email === normalizedEmail);
-      if (envUser) {
-        // Probeer eerst env var
-        let storedPwd = process.env[envUser.pwdKey];
-        
-        // TIJDELIJK: Fallback tot database is geconfigureerd
-        // TODO: Verwijder deze fallback zodra AppGebruikers tabel bestaat
-        if (!storedPwd) {
-          const tempPasswords = {
-            'michiel.heerkens@lavans.nl': 'Herfst2025!',
-            'tijn.heerkens@lavans.nl': 'Herfst2025!',
-            'roberto.hendrikse@lavans.nl': 'Winter2025!'
-          };
-          storedPwd = tempPasswords[normalizedEmail];
-        }
-        
-        if (storedPwd && password === storedPwd) {
-          user = {
-            name: envUser.name,
-            email: envUser.email,
-            role: envUser.role,
-            initials: envUser.initials,
-            shortName: envUser.shortName
-          };
-          passwordValid = true;
-        }
+      const fallbackUser = fallbackUsers.find(u => 
+        u.username.toUpperCase() === normalizedLoginId
+      );
+      
+      if (fallbackUser && password === fallbackUser.password) {
+        user = {
+          name: fallbackUser.name,
+          username: fallbackUser.username,
+          role: fallbackUser.role,
+          initials: fallbackUser.username
+        };
+        passwordValid = true;
       }
     }
 
     if (!user || !passwordValid) {
-      context.log(`Login mislukt voor ${normalizedEmail}`);
+      context.log(`Login mislukt voor ${normalizedLoginId}`);
       context.res = {
         status: 401,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           success: false, 
-          error: 'Onjuiste combinatie van e-mailadres en wachtwoord' 
+          error: 'Onjuiste combinatie van gebruikersnaam en wachtwoord' 
         })
       };
       return;
     }
 
-    context.log(`Login succesvol: ${normalizedEmail}`);
+    context.log(`Login succesvol: ${normalizedLoginId}`);
     
     context.res = {
       status: 200,
@@ -155,4 +146,3 @@ module.exports = async function (context, req) {
     };
   }
 };
-

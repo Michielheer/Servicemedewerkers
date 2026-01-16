@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 
 const LoginScreen = ({ onLogin, loading }) => {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    const success = await onLogin({ email, password });
+    const success = await onLogin({ username, password });
     if (success) {
       setPassword('');
     }
@@ -21,17 +21,21 @@ const LoginScreen = ({ onLogin, loading }) => {
         </p>
         <form className="login-form" onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="login-email">E-mailadres</label>
+            <label htmlFor="login-username">Gebruikersnaam</label>
             <input
-              id="login-email"
-              type="email"
+              id="login-username"
+              type="text"
               className="form-control"
-              placeholder="naam@lavans.nl"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
+              placeholder="Bijv. AOOR"
+              value={username}
+              onChange={(e) => setUsername(e.target.value.toUpperCase())}
+              autoComplete="username"
               required
+              style={{ textTransform: 'uppercase' }}
             />
+            <small style={{ color: '#666', marginTop: '4px', display: 'block' }}>
+              Dit is je medewerkerscode (bijv. AOOR, MVER)
+            </small>
           </div>
           <div className="form-group">
             <label htmlFor="login-password">Wachtwoord</label>
@@ -62,4 +66,3 @@ const LoginScreen = ({ onLogin, loading }) => {
 };
 
 export default LoginScreen;
-
